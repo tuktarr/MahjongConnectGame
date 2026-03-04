@@ -69,6 +69,9 @@ namespace Wanted
 		// shakeoffset 지정함수
 		void SetShakeOffset(const Vector2& offset) { shakeOffset = offset; }
 
+		// 스크린 사이즈 구하기
+		Vector2 GetScreenSize() { return screenSize; }
+
 		// 화면 지우는 함수
 		void Clear();
 	
