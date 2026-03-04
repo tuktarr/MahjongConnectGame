@@ -28,7 +28,7 @@ namespace Wanted
 		// 기존 설정에 마우스 기능 추가 (OR 연산)
 		mode |= (ENABLE_MOUSE_INPUT | ENABLE_EXTENDED_FLAGS | ENABLE_WINDOW_INPUT);
 
-		// 3. 빠른 편집 모드 제거 (AND NOT 연산)
+		// 빠른 편집 모드 제거 (AND NOT 연산)
 		mode &= ~ENABLE_QUICK_EDIT_MODE;
 
 
@@ -146,7 +146,7 @@ namespace Wanted
 
 					keyStates[VK_LBUTTON].isKeyDown = isLeftPressed;
 
-					// [보완] 만약 더블 클릭도 인식하고 싶다면:
+					// 더블 클릭도 인식
 					if (record.Event.MouseEvent.dwEventFlags == DOUBLE_CLICK)
 					{
 						keyStates[VK_LBUTTON].isKeyDown = true;

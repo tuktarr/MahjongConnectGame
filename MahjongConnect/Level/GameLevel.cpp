@@ -2,6 +2,7 @@
 #include "Render/Renderer.h"
 #include <algorithm>
 #include <random>
+#include "Core/Input.h"
 
 GameLevel::GameLevel()
 {
@@ -111,6 +112,8 @@ void GameLevel::Draw()
         for (int x = 0; x < m_mapSize.x; ++x)
         {
             NodeType type = m_map[y][x];
+            // 그리드 좌표를 Vector2로 변환 (콘솔좌표계)
+            // 인덱스 표현을 위해 tileWidth,tileHeight로 곱함
             Vector2 drawPos(startPos.x + (x * tileWidth), startPos.y + (y * tileHeight));
 
             // 선택된(Hovered) 노드인지 확인
@@ -166,6 +169,56 @@ void GameLevel::Draw()
 
 void GameLevel::HandleInput()
 {
+    // 마우스 왼쪽 버튼 클릭 시점에만 실행
+    if (Input::Get().GetButtonDown(VK_LBUTTON))
+    {
+        // 마우스 현재 콘솔 좌표 가져오기
+        Vector2 mousePos = Input::Get().GetMousePosition();
+
+        // Draw함수와 동일한 정렬 기준값 계산
+        const int tileWidth = 4;
+        const int tileHeight = 2;
+        Vector2 startPos(
+            (Renderer::Get().GetScreenSize().x - (m_mapSize.x * tileWidth)) / 2,
+            (Renderer::Get().GetScreenSize().y - (m_mapSize.y * tileHeight)) / 2
+        );
+
+        // 스크린 좌표 -> 그리드 인덱스 변환
+        // 기준점을 맞추기 위해서 startPos만큼 줄임 (시작인덱스만큼 뺌)
+        int gridX = static_cast<int>(mousePos.x - startPos.x) / tileWidth;
+        int gridY = static_cast<int>(mousePos.y - startPos.y) / tileHeight;
+
+        // 유효범위 검사 (맵 안을 클릭했는지?)
+        // 유효한 조건
+        if (gridX >= 0 && gridX < m_mapSize.x && gridY >= 0 && gridY < m_mapSize.y)
+        {
+            // TODO : 빈칸 클릭 시, 나중에 호버된 인덱스들 하나도 없게 만들기
+            if (m_map[gridY][gridX] == NodeType::Empty)
+            {
+                return;
+            }
+
+            // 이미 선택된 곳을 선택한다면 Hover 해제
+            // 아무것도 선택하지 않은 상태를 Vector2(-1,-1)로
+            if (firstSelected == Vector2(gridX, gridY))
+            {
+                firstSelected = Vector2(-1, -1);
+            }
+            else
+            {
+                // 아무것도 선택되지 않은 상태라면 마우스 찍은 곳에 Hover
+                if (firstSelected == Vector2(-1, -1))
+                {
+                    firstSelected = Vector2(gridX, gridY);
+                }
+                // TODO : 두 번째로 찍은 곳에 대해 BFS, A* 알고리즘 실행
+                else
+                {
+                    
+                }
+            }
+        }
+    }
 }
 
 void GameLevel::CreateGrid(Vector2 size)
