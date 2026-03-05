@@ -88,10 +88,12 @@
   <ItemGroup>
     <ClCompile Include="Level\GameLevel.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Util\Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Level\GameLevel.h" />
-    <ClInclude Include="Types.h" />
+    <ClInclude Include="Util\Timer.h" />
+    <ClInclude Include="Util\Types.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Engine\Engine.vcxproj">

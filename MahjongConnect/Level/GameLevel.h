@@ -1,10 +1,16 @@
 #pragma once
 
 #include "Level/Level.h"
-#include "Types.h"
+#include "Util/Types.h" 
 #include "Math/Vector2.h"
 
 using namespace Wanted;
+
+struct PathNode 
+{
+	int x, y, dir, turns;
+	
+};
 
 // 노드 상태 정의
 
@@ -18,7 +24,14 @@ public:
 
 	// 스테이지 번호에 따라 맵 초기화
 	void InitializeMap(int stageLevel);
-     
+	// 핵심 연결 알고리즘
+	bool CanConnect(Vector2 start, Vector2 end);
+    
+	// 좌표 변환 함수
+	Vector2 GridToScreen(int x, int y);
+	Vector2 ScreenToGrid(Vector2 mousePos);
+
+
 private:
 	virtual void Tick(float deltaTime) override;
 	virtual void Draw() override;
@@ -38,5 +51,10 @@ private:
 
 	// 첫 번째로 선택된 노드 좌표 (선택 안됨 : -1,-1)
 	Vector2 firstSelected = Vector2(-1, -1);
+
+	// 두 번째로 선택된 노드 좌표 (선택 안됨 : -1,-1)
+	Vector2 secondSelected = Vector2(-1,-1);
+	const int m_tileWidth = 4;
+	const int m_tileHeight = 2;
 };
 

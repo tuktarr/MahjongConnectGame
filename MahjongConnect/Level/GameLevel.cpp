@@ -2,7 +2,9 @@
 #include "Render/Renderer.h"
 #include <algorithm>
 #include <random>
+#include <queue>
 #include "Core/Input.h"
+#include "Util/Timer.h"
 
 GameLevel::GameLevel()
 {
@@ -88,23 +90,103 @@ void GameLevel::InitializeMap(int stageLevel)
     }
 }
 
+bool GameLevel::CanConnect(Vector2 start, Vector2 end)
+{
+    // 방향 : 상(0) 하(1) 좌(2) 우(3)
+    int dx[] = { 0,0,-1,1 };
+    int dy[] = { -1,1,0,0 };
+
+    std::vector<std::vector<int>> minTurns(m_mapSize.y, std::vector<int>(m_mapSize.x, 50));
+
+    std::queue<PathNode> q;
+    q.push({ start.x,start.y,-1,0 });
+    minTurns[start.y][start.x] = 0;
+
+    // 목적지 큐 뽑아내기
+    while (!q.empty())
+    {
+        PathNode curr = q.front();
+        q.pop();
+
+        if (curr.x == end.x && curr.y == end.y)
+        {
+            return true;
+        }
+
+        // 4방향
+        for (int dir = 0; dir < 4; dir++)
+        {
+            int nx = curr.x + dx[dir];
+            int ny = curr.y + dy[dir];
+
+            if (nx >= 0 && nx < m_mapSize.x && ny >= 0 && ny < m_mapSize.y)
+            {
+                // 꺾임 횟수 계산
+                int totalTurns = curr.turns;
+                if (curr.dir != -1 && curr.dir != dir)
+                {
+                    totalTurns++;
+                }
+
+                // 최대 꺾임 횟수 2회
+                if (totalTurns > 2)
+                {
+                    continue;
+                }
+
+                // 이동 가능한지 확인
+                if ((nx == end.x && ny == end.y) || m_map[ny][nx] == NodeType::Empty)
+                {
+                    if (totalTurns <= minTurns[ny][nx])
+                    {
+                        minTurns[ny][nx] = totalTurns;
+                        q.push({ nx,ny,dir,totalTurns });
+                    }
+                }
+            }
+        }
+
+
+    }
+    return false;
+}
+
+Vector2 GameLevel::GridToScreen(int x, int y)
+{
+    Vector2 startPos(
+        (Renderer::Get().GetScreenSize().x - (m_mapSize.x * m_tileWidth)) / 2,
+        (Renderer::Get().GetScreenSize().y - (m_mapSize.y * m_tileHeight)) / 2
+    );
+
+    int ScreenX = static_cast<int>(startPos.x + (x * m_tileWidth));
+    int ScreenY = static_cast<int>(startPos.y + (y * m_tileHeight));
+
+    return Vector2(ScreenX, ScreenY);
+}
+
+Vector2 GameLevel::ScreenToGrid(Vector2 mousePos)
+{
+    Vector2 startPos(
+        (Renderer::Get().GetScreenSize().x - (m_mapSize.x * m_tileWidth)) / 2,
+        (Renderer::Get().GetScreenSize().y - (m_mapSize.y * m_tileHeight)) / 2
+    );
+
+    int gridX = static_cast<int>(mousePos.x - startPos.x) / m_tileWidth;
+    int gridY = static_cast<int>(mousePos.y - startPos.y) / m_tileHeight;
+
+    return Vector2(gridX, gridY);
+}
+
+
 void GameLevel::Tick(float deltaTime)
 {
+    Level::Tick(deltaTime);
+    HandleInput();
 }
 
 void GameLevel::Draw()
 {
     Level::Draw();
-
-    // 타일 및 여백 설정
-    const int tileWidth = 4;
-    const int tileHeight = 2;
-
-    // 화면 중앙 정렬
-    Vector2 startPos(
-        (Renderer::Get().GetScreenSize().x - (m_mapSize.x * tileWidth)) / 2,
-        (Renderer::Get().GetScreenSize().y - (m_mapSize.y * tileHeight)) / 2
-    );
 
     // 맵 순회하며 그리기
     for (int y = 0; y < m_mapSize.y; ++y)
@@ -112,12 +194,12 @@ void GameLevel::Draw()
         for (int x = 0; x < m_mapSize.x; ++x)
         {
             NodeType type = m_map[y][x];
-            // 그리드 좌표를 Vector2로 변환 (콘솔좌표계)
-            // 인덱스 표현을 위해 tileWidth,tileHeight로 곱함
-            Vector2 drawPos(startPos.x + (x * tileWidth), startPos.y + (y * tileHeight));
 
             // 선택된(Hovered) 노드인지 확인
             bool isFirstSelected = (firstSelected == Vector2(x, y));
+
+            // 좌표 변환 후, draw
+            Vector2 drawPos = GridToScreen(x, y);
 
             // 빈 공간인지 확인
             if (type == NodeType::Empty)
@@ -152,7 +234,7 @@ void GameLevel::Draw()
                 tileText = "[E]";
                 contentColor = Color::Cyan; 
                 break;
-            default: tileText = "[?]"; break;
+            default: tileText = "[ ]"; break;
             }
 
             // 선택된 경우 색상을 반전시키거나 강조
@@ -175,32 +257,22 @@ void GameLevel::HandleInput()
         // 마우스 현재 콘솔 좌표 가져오기
         Vector2 mousePos = Input::Get().GetMousePosition();
 
-        // Draw함수와 동일한 정렬 기준값 계산
-        const int tileWidth = 4;
-        const int tileHeight = 2;
-        Vector2 startPos(
-            (Renderer::Get().GetScreenSize().x - (m_mapSize.x * tileWidth)) / 2,
-            (Renderer::Get().GetScreenSize().y - (m_mapSize.y * tileHeight)) / 2
-        );
-
         // 스크린 좌표 -> 그리드 인덱스 변환
-        // 기준점을 맞추기 위해서 startPos만큼 줄임 (시작인덱스만큼 뺌)
-        int gridX = static_cast<int>(mousePos.x - startPos.x) / tileWidth;
-        int gridY = static_cast<int>(mousePos.y - startPos.y) / tileHeight;
-
+        Vector2 gridIdx = ScreenToGrid(mousePos);
         // 유효범위 검사 (맵 안을 클릭했는지?)
         // 유효한 조건
-        if (gridX >= 0 && gridX < m_mapSize.x && gridY >= 0 && gridY < m_mapSize.y)
+        if (gridIdx.x >= 0 && gridIdx.x < m_mapSize.x && gridIdx.y >= 0 && gridIdx.y < m_mapSize.y)
         {
-            // TODO : 빈칸 클릭 시, 나중에 호버된 인덱스들 하나도 없게 만들기
-            if (m_map[gridY][gridX] == NodeType::Empty)
+            // 빈칸 클릭 시, 처음에 호버된 인덱스 없게 만들기
+            if (m_map[gridIdx.y][gridIdx.x] == NodeType::Empty)
             {
+                firstSelected = Vector2(-1, -1);
                 return;
             }
 
             // 이미 선택된 곳을 선택한다면 Hover 해제
             // 아무것도 선택하지 않은 상태를 Vector2(-1,-1)로
-            if (firstSelected == Vector2(gridX, gridY))
+            if (firstSelected == Vector2(gridIdx.x, gridIdx.y))
             {
                 firstSelected = Vector2(-1, -1);
             }
@@ -209,12 +281,29 @@ void GameLevel::HandleInput()
                 // 아무것도 선택되지 않은 상태라면 마우스 찍은 곳에 Hover
                 if (firstSelected == Vector2(-1, -1))
                 {
-                    firstSelected = Vector2(gridX, gridY);
+                    firstSelected = gridIdx;
                 }
                 // TODO : 두 번째로 찍은 곳에 대해 BFS, A* 알고리즘 실행
                 else
                 {
-                    
+                    secondSelected = gridIdx;
+
+                    if (m_map[firstSelected.y][firstSelected.x] == m_map[secondSelected.y][secondSelected.x])
+                    {
+                        // BFS 실행 -> 직선/꺾임 체크 함수 호출
+                        if (CanConnect(firstSelected, secondSelected))
+                        {
+                            // 연결 성공
+                            m_map[firstSelected.y][firstSelected.x] = NodeType::Empty;
+                            m_map[secondSelected.y][secondSelected.x] = NodeType::Empty;
+                            firstSelected = Vector2(-1, -1);
+                        }
+                        else
+                        {
+                            // 만약 둘의 타입이 다르면 Hover 제거
+                            firstSelected = Vector2(-1,-1);
+                        }
+                    }
                 }
             }
         }
