@@ -4,15 +4,27 @@
 #include <random>
 #include <queue>
 #include "Core/Input.h"
-#include "Util/Timer.h"
 
 GameLevel::GameLevel()
+    : pathDisplayTimer(0.5f)
 {
     InitializeMap(1);
 }
 
 GameLevel::~GameLevel()
 {
+}
+
+void GameLevel::Tick(float deltaTime)
+{
+    Level::Tick(deltaTime);
+    HandleInput();
+
+    // 타이머가 진행 중이라면 업데이트 (IsTimerOut이 아닐 때만)
+    if (!pathDisplayTimer.IsTimeOut())
+    {
+        pathDisplayTimer.Tick(deltaTime);
+    }
 }
 
 void GameLevel::InitializeMap(int stageLevel)
@@ -92,14 +104,18 @@ void GameLevel::InitializeMap(int stageLevel)
 
 bool GameLevel::CanConnect(Vector2 start, Vector2 end)
 {
+    m_currentPath.clear(); // 이전 경로 초기화
+
     // 방향 : 상(0) 하(1) 좌(2) 우(3)
     int dx[] = { 0,0,-1,1 };
     int dy[] = { -1,1,0,0 };
 
     std::vector<std::vector<int>> minTurns(m_mapSize.y, std::vector<int>(m_mapSize.x, 50));
+    // 부모 노드를 추적하기 위한 맵
+    std::vector<std::vector<Vector2>> parentMap(m_mapSize.y, std::vector<Vector2>(m_mapSize.x, InvalidPos));
 
     std::queue<PathNode> q;
-    q.push({ start.x,start.y,-1,0 });
+    q.push({ start.x,start.y, -1, 0, InvalidPos });
     minTurns[start.y][start.x] = 0;
 
     // 목적지 큐 뽑아내기
@@ -108,8 +124,15 @@ bool GameLevel::CanConnect(Vector2 start, Vector2 end)
         PathNode curr = q.front();
         q.pop();
 
+        // 목표 도달 시 경로 역추적
         if (curr.x == end.x && curr.y == end.y)
         {
+            Vector2 backTrace = Vector2(curr.x, curr.y);
+            while (backTrace != InvalidPos)
+            {
+                m_currentPath.push_back(backTrace);
+                backTrace = parentMap[backTrace.y][backTrace.x]; // 부모 좌표로 이동
+            }
             return true;
         }
 
@@ -140,7 +163,8 @@ bool GameLevel::CanConnect(Vector2 start, Vector2 end)
                     if (totalTurns <= minTurns[ny][nx])
                     {
                         minTurns[ny][nx] = totalTurns;
-                        q.push({ nx,ny,dir,totalTurns });
+                        parentMap[ny][nx] = Vector2(curr.x, curr.y);
+                        q.push({ nx,ny,dir,totalTurns, Vector2(curr.x,curr.y)});
                     }
                 }
             }
@@ -178,11 +202,6 @@ Vector2 GameLevel::ScreenToGrid(Vector2 mousePos)
 }
 
 
-void GameLevel::Tick(float deltaTime)
-{
-    Level::Tick(deltaTime);
-    HandleInput();
-}
 
 void GameLevel::Draw()
 {
@@ -247,6 +266,17 @@ void GameLevel::Draw()
             Renderer::Get().Submit(tileText, drawPos, contentColor, 5);
         }
     }
+
+    // 연결 경로 그리기
+    if (!pathDisplayTimer.IsTimeOut() && !m_currentPath.empty())
+    {
+        for (const auto& pos : m_currentPath)
+        {
+            Vector2 drawPos = GridToScreen(pos.x, pos.y);
+
+            Renderer::Get().Submit("*", drawPos, Color::Red, 10);
+        }
+    }
 }
 
 void GameLevel::HandleInput()
@@ -266,7 +296,7 @@ void GameLevel::HandleInput()
             // 빈칸 클릭 시, 처음에 호버된 인덱스 없게 만들기
             if (m_map[gridIdx.y][gridIdx.x] == NodeType::Empty)
             {
-                firstSelected = Vector2(-1, -1);
+                firstSelected = InvalidPos;
                 return;
             }
 
@@ -274,12 +304,12 @@ void GameLevel::HandleInput()
             // 아무것도 선택하지 않은 상태를 Vector2(-1,-1)로
             if (firstSelected == Vector2(gridIdx.x, gridIdx.y))
             {
-                firstSelected = Vector2(-1, -1);
+                firstSelected = InvalidPos;
             }
             else
             {
                 // 아무것도 선택되지 않은 상태라면 마우스 찍은 곳에 Hover
-                if (firstSelected == Vector2(-1, -1))
+                if (firstSelected == InvalidPos)
                 {
                     firstSelected = gridIdx;
                 }
@@ -296,12 +326,16 @@ void GameLevel::HandleInput()
                             // 연결 성공
                             m_map[firstSelected.y][firstSelected.x] = NodeType::Empty;
                             m_map[secondSelected.y][secondSelected.x] = NodeType::Empty;
-                            firstSelected = Vector2(-1, -1);
+
+                            // 타이머 리셋하고 경로 그리기
+                            pathDisplayTimer.Reset();
+
+                            firstSelected = InvalidPos;
                         }
                         else
                         {
                             // 만약 둘의 타입이 다르면 Hover 제거
-                            firstSelected = Vector2(-1,-1);
+                            firstSelected = InvalidPos;
                         }
                     }
                 }
