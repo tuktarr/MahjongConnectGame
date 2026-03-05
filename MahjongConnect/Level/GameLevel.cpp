@@ -213,41 +213,40 @@ std::string GameLevel::GetPathChar(Vector2 prev, Vector2 curr, Vector2 next)
     // 세로
     if (prev.x == next.x)
     {
-        return "||";
+        return " |";
     }
     // 가로
     if (prev.y == next.y)
     {
-        return "==";
+        return "ㅡ";
     }
 
     // 코너 판정
     // 현재 좌표(curr)를 기준으로 prev와 next가 어디 있는지 계산
     bool up = (prev.y < curr.y || next.y < curr.y);
     bool down = (prev.y > curr.y || next.y > curr.y);
-    bool left = (prev.x < curr.y || next.y < curr.y);
+    bool left = (prev.x < curr.x || next.x < curr.x);
     bool right = (prev.x > curr.x || next.x > curr.x);
 
     // TODO : 일단 디자인은 놔두고 나중에 예쁜걸로 교체
     if (up && right)
     {
-        return "++";
+        return "O_";
     }
     if (up && left)
     {
-        return "++";
+        return "_O";
     }
     if (down && right)
     {
-        return "++";
+        return "O-";
     }
     if (down && left)
     {
-        return "++ ";
+        return "-O";
     }
     return "::";
 }
-
 
 
 void GameLevel::Draw()
