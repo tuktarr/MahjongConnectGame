@@ -7,11 +7,44 @@
 
 using namespace Wanted;
 
+// (A* / BFS 탐색용 구조체)
 struct PathNode 
 {
 	int x, y, dir, turns;
 	// 나를 큐에 넣은 이전 좌표
 	Vector2 parent = Vector2(-1, -1);
+};
+
+// A* 알고리즘에서 먼저 탐색할 경로에 대한 기준
+struct NodeComparer
+{
+	Vector2 targetPos;
+	NodeComparer(Vector2 target) : targetPos(target) {}
+
+	bool operator() (const PathNode& a, const PathNode& b)
+	{
+		// G-Score : 꺾임 횟수
+		int g_a = a.turns * 10;
+		int g_b = b.turns * 10;
+
+		// H-Score : 목적지까지 직선 거리 (유동적으로 계속 변함)
+		int h_a = abs(a.x - targetPos.x) + abs(a.y - targetPos.y);
+		int h_b = abs(b.x - targetPos.x) + abs(b.y - targetPos.y);
+
+		// F-Score = G + H
+		int f_a = g_a + h_a;
+		int f_b = g_b + h_b;
+
+		// 점수가 낮은 것이 우선순위가 높아야 하므로 >
+		// 꺾임 횟수 적은 것을 최우선으로 탐색 pq에서 front를 안하고 top을 함
+		if (f_a != f_b)
+		{
+			return f_a > f_b;
+		}
+		
+		// 점수가 같다면 꺾임이 더 적은 쪽을 우선
+		return a.turns > b.turns;
+	}
 };
 
 // 노드 상태 정의
@@ -33,6 +66,9 @@ public:
 	// 좌표 변환 함수
 	Vector2 GridToScreen(int x, int y);
 	Vector2 ScreenToGrid(Vector2 mousePos);
+	
+	// 좌표들 사이의 방향을 보고 적절한 선 문자를 반환하는 함수
+	std::string GetPathChar(Vector2 prev, Vector2 curr, Vector2 next);
 
 private:
 	virtual void Tick(float deltaTime) override;
