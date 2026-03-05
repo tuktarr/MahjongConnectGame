@@ -1,4 +1,4 @@
-﻿#include "GameLevel.h"
+#include "GameLevel.h"
 #include "Render/Renderer.h"
 #include <algorithm>
 #include <random>
@@ -6,7 +6,7 @@
 #include "Core/Input.h"
 
 GameLevel::GameLevel()
-    : pathDisplayTimer(0.5f)
+    : pathDisplayTimer(15.0f)
 {
     InitializeMap(1);
 }
@@ -24,6 +24,31 @@ void GameLevel::Tick(float deltaTime)
     if (!pathDisplayTimer.IsTimeOut())
     {
         pathDisplayTimer.Tick(deltaTime);
+    }
+
+    // 이펙트 업데이트
+    for (auto it = m_effects.begin(); it != m_effects.end();)
+    {
+        it->timer.Tick(deltaTime);
+
+        // 속도만큼 위치 이동
+        it->pos.x += it->velocity.x * deltaTime;
+        it->pos.y += it->velocity.y * deltaTime;
+
+        // 중력 가속도 적용
+        it->velocity.y += 9.8f * deltaTime;
+
+        // 시간이 지날수록 모양 변화
+        if (it->timer.GetProgress() > 0.7f) it->icon = ".";
+
+        if (it->timer.IsTimeOut())
+        {
+            it = m_effects.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
     }
 }
 
@@ -209,43 +234,42 @@ Vector2 GameLevel::ScreenToGrid(Vector2 mousePos)
 
 std::string GameLevel::GetPathChar(Vector2 prev, Vector2 curr, Vector2 next)
 {
-    // 직선 판정
-    // 세로
-    if (prev.x == next.x)
-    {
-        return " |";
-    }
-    // 가로
-    if (prev.y == next.y)
-    {
-        return "ㅡ";
-    }
-
-    // 코너 판정
-    // 현재 좌표(curr)를 기준으로 prev와 next가 어디 있는지 계산
     bool up = (prev.y < curr.y || next.y < curr.y);
     bool down = (prev.y > curr.y || next.y > curr.y);
     bool left = (prev.x < curr.x || next.x < curr.x);
     bool right = (prev.x > curr.x || next.x > curr.x);
 
-    // TODO : 일단 디자인은 놔두고 나중에 예쁜걸로 교체
+    // CP949 16진수: ─(\xA6\xA1), │(\xA6\xA2), ┌(\xA6\xA3), ┐(\xA6\xA4), ┘(\xA6\xA5), └(\xA6\xA6)
+    // 모든 리턴은 정확히 4바이트여야 그리드가 안밀림
+
+    // 세로 직선
+    if (up && down)
+    {
+        return "   \xA6\xA2   ";
+    }
+    // 가로 직선
+    if (left && right) 
+        return "\xA6\xA1\xA6\xA1\xA6\xA1\xA6\xA1";
+
+    // 코너 (오른쪽 타일과 연결: └, ┌) -> 뒤쪽을 가로선으로 채움
     if (up && right)
     {
-        return "O_";
+        return "   \xA6\xA6\xA6\xA1 ";// └─
     }
+    if (down && right) 
+    {
+        return "   \xA6\xA3\xA6\xA1 ";// ┌─
+    }
+    // 코너 (왼쪽 타일과 연결: ┘, ┐) -> 앞쪽을 가로선으로 채움
     if (up && left)
     {
-        return "_O";
-    }
-    if (down && right)
-    {
-        return "O-";
+        return "\xA6\xA1\xA6\xA1\xA6\xA5  ";// ─┘
     }
     if (down && left)
     {
-        return "-O";
+        return "\xA6\xA1\xA6\xA1\xA6\xA4  ";// ─┐
     }
-    return "::";
+    return "    ";
 }
 
 
@@ -313,29 +337,28 @@ void GameLevel::Draw()
         }
     }
 
-    // 연결 경로 그리기
-    if (!pathDisplayTimer.IsTimeOut() && m_currentPath.size()>= 2)
+    // 이펙트 그리기
+    for (const auto& effect : m_effects)
     {
-        for (int i = 0; i < m_currentPath.size();++i)
+        Vector2 drawPos = GridToScreen(effect.pos.x, effect.pos.y);
+        Renderer::Get().Submit(effect.icon, drawPos, effect.color, 3);
+    }
+
+    // 연결 경로 그리기
+    if (!pathDisplayTimer.IsTimeOut() && m_currentPath.size() >= 2)
+    {
+        // i = 1 부터 size - 2 까지만 순회 (시작과 끝 제외)
+        for (int i = 1; i < (int)m_currentPath.size() - 1; ++i)
         {
             Vector2 pos = m_currentPath[i];
             Vector2 drawPos = GridToScreen(pos.x, pos.y);
-            std::string icon = " *";
+
+            Vector2 prev = m_currentPath[i - 1];
+            Vector2 next = m_currentPath[i + 1];
+
+            // 중간 경로만 GetPathChar로 가져와서 출력
+            std::string icon = GetPathChar(prev, pos, next);
             Color pathColor = Color::Red;
-
-            if (i == 0||i == m_currentPath.size() - 1)
-            {
-                // 시작과 끝 icon 삽입
-
-                pathColor = Color::Yellow;
-            }
-            else
-            {
-                // 중간 경로 선 모양 결정
-                Vector2 prev = m_currentPath[i - 1];
-                Vector2 next = m_currentPath[i + 1];
-                icon = GetPathChar(prev, pos, next);
-            }
 
             Renderer::Get().Submit(icon, drawPos, pathColor, 10);
         }
@@ -365,7 +388,7 @@ void GameLevel::HandleInput()
 
             // 이미 선택된 곳을 선택한다면 Hover 해제
             // 아무것도 선택하지 않은 상태를 Vector2(-1,-1)로
-            if (firstSelected == Vector2(gridIdx.x, gridIdx.y))
+            if (firstSelected == gridIdx)
             {
                 firstSelected = InvalidPos;
             }
@@ -376,7 +399,7 @@ void GameLevel::HandleInput()
                 {
                     firstSelected = gridIdx;
                 }
-                // TODO : 두 번째로 찍은 곳에 대해 BFS, A* 알고리즘 실행
+                // 두 번째로 찍은 곳에 대해 BFS, A* 알고리즘 실행
                 else
                 {
                     secondSelected = gridIdx;
@@ -389,6 +412,16 @@ void GameLevel::HandleInput()
                             // 연결 성공
                             m_map[firstSelected.y][firstSelected.x] = NodeType::Empty;
                             m_map[secondSelected.y][secondSelected.x] = NodeType::Empty;
+
+                            // 경로 잔상 이펙트 (순차적 느낌을 위해 i값에 따라 수명 조절)
+                            for (int i = 0; i < m_currentPath.size(); i+=2)
+                            {
+                                m_effects.emplace_back(m_currentPath[i], Vector2(0, 0), ".", 0.2f, Color::Cyan);
+                            }
+
+                            // 폭발 이펙트 발생
+                            CreateExplosion(firstSelected);
+                            CreateExplosion(secondSelected);
 
                             // 타이머 리셋하고 경로 그리기
                             pathDisplayTimer.Reset();
@@ -420,4 +453,19 @@ void GameLevel::CreateGrid(Vector2 size)
 	{
 		m_map[i].assign(m_mapSize.x, NodeType::Empty);
 	}
+}
+
+void GameLevel::CreateExplosion(Vector2 gridPos)
+{
+    for (int i = 0; i < 8; ++i) // 입자 개수 증가
+    {
+        // -1.0 ~ 1.0 사이의 무작위 방향과 힘
+        float vx = ((rand() % 200) - 100) / 40.0f;
+        float vy = ((rand() % 200) - 150) / 40.0f;
+
+        Vector2 velocity(vx, vy);
+        std::string icon = (rand() % 2 == 0) ? "*" : "+";
+
+        m_effects.emplace_back(gridPos, velocity, icon, 0.6f, Color::Yellow);
+    }
 }

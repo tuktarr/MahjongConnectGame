@@ -3,8 +3,8 @@
 #include "Level/Level.h"
 #include "Util/Types.h" 
 #include "Math/Vector2.h"
+#include "Math/Color.h"
 #include "Util/Timer.h"
-
 using namespace Wanted;
 
 // (A* / BFS 탐색용 구조체)
@@ -47,7 +47,20 @@ struct NodeComparer
 	}
 };
 
-// 노드 상태 정의
+// 타일 제거 시, 호출되는 이펙트
+struct GameEffect
+{
+	Vector2 pos;
+	Vector2 velocity;
+	std::string icon;
+	Timer timer;
+	Color color;
+
+	GameEffect(Vector2 _pos, Vector2 _velocity, std::string _icon, float duration,Color _color)
+		: pos(_pos), velocity(_velocity),icon(_icon),timer(duration),color(_color) 
+	{ 
+	}
+};
 
 // 사천성 맵을 관리
 class GameLevel : public Level
@@ -76,9 +89,12 @@ private:
 
 	// 입력 로직
 	void HandleInput();
-
+	
 	// 물리적인 그리드 맵 생성
 	void CreateGrid(Vector2 size);
+
+	// 사방으로 튀는 파편 효과
+	void CreateExplosion(Vector2 gridPos);
 private:
 	// 2차원 그리드 구조 (외곽 2칸 여유 포함)
 	// m : mahjong
@@ -95,13 +111,16 @@ private:
 
 	// 두 번째로 선택된 노드 좌표 (선택 안됨 : -1,-1)
 	Vector2 secondSelected = InvalidPos;
-	const int m_tileWidth = 4;
-	const int m_tileHeight = 2;
+	const int m_tileWidth = 8;
+	const int m_tileHeight = 4;
 
 	// 역추적 경로 (목적지에서 출발지까지)
 	std::vector<Vector2> m_currentPath;
 
 	// TimerHandle(시각적으로 경로 보여주는 타이머)
 	Timer pathDisplayTimer;
+
+	// 파괴 이펙트 관리하는 벡터
+	std::vector<GameEffect> m_effects;
 };
 
