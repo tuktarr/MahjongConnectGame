@@ -19,6 +19,12 @@ public:
 	virtual void Draw() override;
 
 private:
+	// 상태별 업데이트 함수들 (Tick에서 호출됨)
+	void UpdateReady(float deltaTime);
+	void UpdatePlaying(float deltaTime);
+	void UpdateStageClear(float deltaTime);
+	void UpdateGameOver(float deltaTime);
+private:
 	GameLevel* m_level; 
 	// 현재 스테이지 번호
 	int m_currentStage;
