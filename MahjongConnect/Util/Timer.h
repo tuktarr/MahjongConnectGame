@@ -24,6 +24,8 @@ public:
 	// 진행률 반환 (0.0 ~ 1.0) / 게이지바 그리는 함수
 	float GetProgress() const;
 
+	float GetRemainTime() const;
+
 private:
 	// 경과 시간 확인용 변수
 	float elapsedTime = 0.0f;

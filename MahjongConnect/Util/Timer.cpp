@@ -40,3 +40,9 @@ float Timer::GetProgress() const
 	// ratio 1을 넘지 않게하기
 	return (ratio > 1.0f) ? 1.0f : ratio;
 }
+
+float Timer::GetRemainTime() const
+{
+	float remain = targetTime - elapsedTime;
+	return (remain > 0.0f) ? remain : 0.0f; // 음수 시간 방지
+}

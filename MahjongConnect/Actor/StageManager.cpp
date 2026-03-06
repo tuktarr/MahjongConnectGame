@@ -43,27 +43,41 @@ void StageManager::Draw()
 	super::Draw();
 
 	// 화면 정중앙 좌표 계산
-
 	Vector2 screenSize = Renderer::Get().GetScreenSize();
 	Vector2 centerPos = Vector2(screenSize.x / 2 - 5, screenSize.y / 2);
 
 	// 현재 상태에 따라 다른 UI 출력
 	switch (m_state)
 	{
-	case GameState::Ready:
-		Renderer::Get().Submit("[ O P E N ]", centerPos, Color::Green, 33);
-		break;
-	case GameState::Playing:
-		// TODO : 현재 남은 시간, 현재 스테이지 그리기
-		//Renderer::Get().Submit()
-		break;
-	case GameState::StageClear:
-		Renderer::Get().Submit("STAGE CLEAR!", centerPos, Color::Green, 33);
-		break;
-	case GameState::GameOver:
-		Renderer::Get().Submit("GAME OVER...", centerPos, Color::Red, 33);
-		break;
+		case GameState::Ready:
+		{
+			Renderer::Get().Submit("[ O P E N ]", centerPos, Color::Green, 33);
+			break;
+		}
+		case GameState::Playing:
+		{
+			// 현재 남은 시간, 현재 스테이지 그리기
+			std::string stageText = "STAGE " + std::to_string(m_currentStage);
+		
+			// 남은 시간 소수점 떼고 정수로 변환하여 출력
+			int remainTime = static_cast<int>(m_playerTimer.GetRemainTime());
+			std::string timeText = "TIME: " + std::to_string(remainTime) + " sec";
 
+			// 화면 좌측 상단 쪽에 UI 배치
+			Renderer::Get().Submit(stageText, Vector2(2, 1), Color::Yellow, 33);
+			Renderer::Get().Submit(timeText, Vector2(2, 3), Color::Yellow, 33);
+			break;
+		}
+		case GameState::StageClear:
+		{
+			Renderer::Get().Submit("STAGE CLEAR!", centerPos, Color::Green, 33);
+			break;
+		}
+		case GameState::GameOver:
+		{
+			Renderer::Get().Submit("GAME OVER...", centerPos, Color::Red, 33);
+			break;
+		}
 	}
 }
 
@@ -76,7 +90,9 @@ void StageManager::UpdateReady(float deltaTime)
 		m_level->InitializeMap(m_currentStage);
 	
 		// 타이머 리셋
+		// TODO : 나중에 랭킹 시스템을 위해서 Timer의 시간을 저장해야함
 		m_playerTimer.Reset();
+		m_playerTimer.SetTargetTime(60.0f);
 
 		// 버튼 누르면 Playing 상태로 넘어감
 		m_state = GameState::Playing;
@@ -86,7 +102,7 @@ void StageManager::UpdateReady(float deltaTime)
 void StageManager::UpdatePlaying(float deltaTime)
 {
 	// TODO : 타임아웃 타이머 진행
-	// m_playerTimer.Tick(deltaTime)
+	m_playerTimer.Tick(deltaTime);
 	
 	// 타일 모두 제거 시, StageClear 상태로
 	if (m_level->GetRemainPairs() <= 0)
@@ -98,10 +114,16 @@ void StageManager::UpdatePlaying(float deltaTime)
 	}
 
 	// 제한 시간 초과 시, GameOver 상태로
-	
-	// 교착 상태 발생 시, GameOver 상태로
+	if (m_playerTimer.IsTimeOut())
+	{
+		m_state = GameState::GameOver;
+		m_stateTimer.Reset();
+		m_stateTimer.SetTargetTime(3.0f);
+		return;
+	}
 
-	
+	// TODO : 교착 상태 발생 시, GameOver 상태로
+
 }
 
 void StageManager::UpdateStageClear(float deltaTime)
@@ -140,6 +162,8 @@ void StageManager::UpdateGameOver(float deltaTime)
 		// 데이터 초기화
 		m_currentStage = 1;
 
+		// 임시 사용
+		m_state = GameState::Ready;
 		// 게임 시작 메뉴로 이동
 		// TODO : 게임 시작 메뉴 구현
 	}
