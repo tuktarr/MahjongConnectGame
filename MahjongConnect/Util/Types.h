@@ -22,4 +22,5 @@ namespace Wanted
 		GameOver,	// 시간 초과
 		StageClear	// 모든 노드 제거 완료
 	};
+
 }
