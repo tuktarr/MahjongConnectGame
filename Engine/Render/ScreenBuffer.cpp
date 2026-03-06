@@ -59,6 +59,7 @@ namespace Wanted
 		SetConsoleCursorInfo(buffer, &info);
 	}
 
+
 	ScreenBuffer::~ScreenBuffer()
 	{
 		// 버퍼 해제

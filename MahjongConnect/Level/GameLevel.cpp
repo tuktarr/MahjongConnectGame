@@ -8,11 +8,14 @@
 GameLevel::GameLevel()
     : pathDisplayTimer(15.0f)
 {
+    // 콘솔모드 변경
+    SetConsoleOutputCP(437);
     InitializeMap(1);
 }
 
 GameLevel::~GameLevel()
 {
+    SetConsoleOutputCP(949);
 }
 
 void GameLevel::Tick(float deltaTime)
@@ -242,34 +245,55 @@ std::string GameLevel::GetPathChar(Vector2 prev, Vector2 curr, Vector2 next)
     // CP949 16진수: ─(\xA6\xA1), │(\xA6\xA2), ┌(\xA6\xA3), ┐(\xA6\xA4), ┘(\xA6\xA5), └(\xA6\xA6)
     // 모든 리턴은 정확히 4바이트여야 그리드가 안밀림
 
-    // 세로 직선
-    if (up && down)
-    {
-        return "   \xA6\xA2   ";
-    }
-    // 가로 직선
-    if (left && right) 
-        return "\xA6\xA1\xA6\xA1\xA6\xA1\xA6\xA1";
+    //// 세로 직선
+    //if (up && down)
+    //{
+    //    return "    \xA6\xA2    ";
+    //}
+    //// 가로 직선
+    //if (left && right) 
+    //    return "\xA6\xA1\xA6\xA1\xA6\xA1\xA6\xA1\xA6\xA1";
 
-    // 코너 (오른쪽 타일과 연결: └, ┌) -> 뒤쪽을 가로선으로 채움
-    if (up && right)
-    {
-        return "   \xA6\xA6\xA6\xA1 ";// └─
-    }
-    if (down && right) 
-    {
-        return "   \xA6\xA3\xA6\xA1 ";// ┌─
-    }
-    // 코너 (왼쪽 타일과 연결: ┘, ┐) -> 앞쪽을 가로선으로 채움
-    if (up && left)
-    {
-        return "\xA6\xA1\xA6\xA1\xA6\xA5  ";// ─┘
-    }
-    if (down && left)
-    {
-        return "\xA6\xA1\xA6\xA1\xA6\xA4  ";// ─┐
-    }
-    return "    ";
+    //// 코너 (오른쪽 타일과 연결: └, ┌) -> 뒤쪽을 가로선으로 채움
+    //if (up && right)
+    //{
+    //    return "    \xA6\xA6\xA6\xA1\xA6\xA1";// └─
+    //}
+    //if (down && right) 
+    //{
+    //    return "    \xA6\xA3\xA6\xA1\xA6\xA1";// ┌─
+    //}
+    //// 코너 (왼쪽 타일과 연결: ┘, ┐) -> 앞쪽을 가로선으로 채움
+    //if (up && left)
+    //{
+    //    return "\xA6\xA1\xA6\xA1\xA6\xA5    ";// ─┘
+    //}
+    //if (down && left)
+    //{
+    //    return "\xA6\xA1\xA6\xA1\xA6\xA4    ";// ─┐
+    //}
+    //return "          ";
+    //if (up && down) return "    |     ";          // 세로 (공백3 + | + 공백4 = 8칸)
+    //if (left && right) return "----------";       // 가로 (- 8개 = 8칸)
+    //if (up && right) return "   +------";         // 코너 (└─ 대용)
+    //if (down && right) return "   +------";        // 코너 (┌─ 대용)
+    //if (up && left) return "------+   ";          // 코너 (─┘ 대용)
+    //if (down && left) return "------+   ";        // 코너 (─┐ 대용)
+    char v = (char)179;
+    char h = (char)196;
+    char ur = (char)192;
+    char dr = (char)218;
+    char ul = (char)217;
+    char dl = (char)191;
+
+    if (up && down) return std::string("    ") + v + std::string("     ");
+    if (left && right) return std::string(10, h);
+    if (up && right) return std::string("    ") + ur + std::string(5, h);
+    if (down && right) return std::string("    ") + dr + std::string(5, h);
+    if (up && left) return std::string(4, h) + ul + std::string("     ");
+    if (down && left) return std::string(4, h) + dl + std::string("     ");
+
+    return "          ";
 }
 
 
@@ -331,6 +355,9 @@ void GameLevel::Draw()
             {
                 contentColor = Color::Yellow;
             }
+
+            Vector2 tileDrawPos = drawPos;
+            tileDrawPos.x += 3;
 
             // 그리기 제출
             Renderer::Get().Submit(tileText, drawPos, contentColor, 5);

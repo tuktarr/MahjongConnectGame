@@ -111,7 +111,7 @@ private:
 
 	// 두 번째로 선택된 노드 좌표 (선택 안됨 : -1,-1)
 	Vector2 secondSelected = InvalidPos;
-	const int m_tileWidth = 8;
+	const int m_tileWidth = 10;
 	const int m_tileHeight = 4;
 
 	// 역추적 경로 (목적지에서 출발지까지)
