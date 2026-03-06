@@ -24,11 +24,12 @@ void GameLevel::Tick(float deltaTime)
 {
     Level::Tick(deltaTime);
 
+    HandleInput();
+
     if (m_stageManager)
     {
         m_stageManager->Tick(deltaTime);
     }
-    HandleInput();
 
     // 타이머가 진행 중이라면 업데이트 (IsTimerOut이 아닐 때만)
     if (!pathDisplayTimer.IsTimeOut())
@@ -64,6 +65,11 @@ void GameLevel::Tick(float deltaTime)
 
 void GameLevel::InitializeMap(int stageLevel)
 {
+    // 이전 스테이지의 쓰레기 데이터 청소
+    m_currentPath.clear();
+    m_effects.clear();
+    firstSelected = InvalidPos;
+    secondSelected = InvalidPos;
 	// 스테이지에 따른 사이즈 결정
 	Vector2 playSize;
     switch (stageLevel)
