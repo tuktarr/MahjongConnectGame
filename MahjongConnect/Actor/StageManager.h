@@ -18,6 +18,9 @@ public:
 	virtual void Tick(float deltaTime) override;
 	virtual void Draw() override;
 
+	// Getter
+	GameState GetState() const { return m_state; }
+
 private:
 	// 상태별 업데이트 함수들 (Tick에서 호출됨)
 	void UpdateReady(float deltaTime);
@@ -33,6 +36,10 @@ private:
 
 	// Type.h에 있는 enum class
 	GameState m_state;
+
+	// 스테이지 클리어 제한 타이머
+	Timer m_playerTimer;
+
 	// 상태 전환 딜레이용 타이머
 	Timer m_stateTimer;
 

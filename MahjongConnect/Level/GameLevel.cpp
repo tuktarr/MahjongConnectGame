@@ -4,13 +4,15 @@
 #include <random>
 #include <queue>
 #include "Core/Input.h"
+#include "Actor/StageManager.h"
 
 GameLevel::GameLevel()
-    : pathDisplayTimer(15.0f)
+    : pathDisplayTimer(5.0f)
 {
     // 콘솔모드 변경
     SetConsoleOutputCP(437);
-    InitializeMap(1);
+
+    m_stageManager = std::make_unique<StageManager>(this);
 }
 
 GameLevel::~GameLevel()
@@ -21,6 +23,11 @@ GameLevel::~GameLevel()
 void GameLevel::Tick(float deltaTime)
 {
     Level::Tick(deltaTime);
+
+    if (m_stageManager)
+    {
+        m_stageManager->Tick(deltaTime);
+    }
     HandleInput();
 
     // 타이머가 진행 중이라면 업데이트 (IsTimerOut이 아닐 때만)
@@ -128,6 +135,8 @@ void GameLevel::InitializeMap(int stageLevel)
         m_map[pos1.y][pos1.x] = type;
         m_map[pos2.y][pos2.x] = type;
     }
+
+    m_remainPairs = pairCount;
 }
 
 bool GameLevel::CanConnect(Vector2 start, Vector2 end)
@@ -242,43 +251,6 @@ std::string GameLevel::GetPathChar(Vector2 prev, Vector2 curr, Vector2 next)
     bool left = (prev.x < curr.x || next.x < curr.x);
     bool right = (prev.x > curr.x || next.x > curr.x);
 
-    // CP949 16진수: ─(\xA6\xA1), │(\xA6\xA2), ┌(\xA6\xA3), ┐(\xA6\xA4), ┘(\xA6\xA5), └(\xA6\xA6)
-    // 모든 리턴은 정확히 4바이트여야 그리드가 안밀림
-
-    //// 세로 직선
-    //if (up && down)
-    //{
-    //    return "    \xA6\xA2    ";
-    //}
-    //// 가로 직선
-    //if (left && right) 
-    //    return "\xA6\xA1\xA6\xA1\xA6\xA1\xA6\xA1\xA6\xA1";
-
-    //// 코너 (오른쪽 타일과 연결: └, ┌) -> 뒤쪽을 가로선으로 채움
-    //if (up && right)
-    //{
-    //    return "    \xA6\xA6\xA6\xA1\xA6\xA1";// └─
-    //}
-    //if (down && right) 
-    //{
-    //    return "    \xA6\xA3\xA6\xA1\xA6\xA1";// ┌─
-    //}
-    //// 코너 (왼쪽 타일과 연결: ┘, ┐) -> 앞쪽을 가로선으로 채움
-    //if (up && left)
-    //{
-    //    return "\xA6\xA1\xA6\xA1\xA6\xA5    ";// ─┘
-    //}
-    //if (down && left)
-    //{
-    //    return "\xA6\xA1\xA6\xA1\xA6\xA4    ";// ─┐
-    //}
-    //return "          ";
-    //if (up && down) return "    |     ";          // 세로 (공백3 + | + 공백4 = 8칸)
-    //if (left && right) return "----------";       // 가로 (- 8개 = 8칸)
-    //if (up && right) return "   +------";         // 코너 (└─ 대용)
-    //if (down && right) return "   +------";        // 코너 (┌─ 대용)
-    //if (up && left) return "------+   ";          // 코너 (─┘ 대용)
-    //if (down && left) return "------+   ";        // 코너 (─┐ 대용)
     char v = (char)179;
     char h = (char)196;
     char ur = (char)192;
@@ -347,6 +319,10 @@ void GameLevel::Draw()
                 tileText = "[E]";
                 contentColor = Color::Cyan; 
                 break;
+            case NodeType::Type6:
+                tileText = "[F]";
+                contentColor = Color::Brown; 
+                break;
             default: tileText = "[ ]"; break;
             }
 
@@ -362,6 +338,7 @@ void GameLevel::Draw()
             // 그리기 제출
             Renderer::Get().Submit(tileText, drawPos, contentColor, 5);
         }
+
     }
 
     // 이펙트 그리기
@@ -390,10 +367,20 @@ void GameLevel::Draw()
             Renderer::Get().Submit(icon, drawPos, pathColor, 10);
         }
     }
+
+    if (m_stageManager)
+    {
+        m_stageManager->Draw();
+    }
 }
 
 void GameLevel::HandleInput()
 {
+    if (m_stageManager && m_stageManager->GetState() != GameState::Playing)
+    {
+        return;
+    }
+
     // 마우스 왼쪽 버튼 클릭 시점에만 실행
     if (Input::Get().GetButtonDown(VK_LBUTTON))
     {
@@ -439,6 +426,8 @@ void GameLevel::HandleInput()
                             // 연결 성공
                             m_map[firstSelected.y][firstSelected.x] = NodeType::Empty;
                             m_map[secondSelected.y][secondSelected.x] = NodeType::Empty;
+
+                            m_remainPairs--;
 
                             // 경로 잔상 이펙트 (순차적 느낌을 위해 i값에 따라 수명 조절)
                             for (int i = 0; i < m_currentPath.size(); i+=2)

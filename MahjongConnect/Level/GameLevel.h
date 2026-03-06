@@ -5,8 +5,9 @@
 #include "Math/Vector2.h"
 #include "Math/Color.h"
 #include "Util/Timer.h"
+#include <memory>
 using namespace Wanted;
-
+class StageManager;
 // (A* / BFS 탐색용 구조체)
 struct PathNode 
 {
@@ -83,6 +84,9 @@ public:
 	// 좌표들 사이의 방향을 보고 적절한 선 문자를 반환하는 함수
 	std::string GetPathChar(Vector2 prev, Vector2 curr, Vector2 next);
 
+	// Getter
+	int GetRemainPairs() const { return m_remainPairs; }
+
 private:
 	virtual void Tick(float deltaTime) override;
 	virtual void Draw() override;
@@ -122,5 +126,10 @@ private:
 
 	// 파괴 이펙트 관리하는 벡터
 	std::vector<GameEffect> m_effects;
+
+	// 맵 생성 시, 생성된 짝의 개수
+	int m_remainPairs = 0;
+
+	std::unique_ptr<StageManager> m_stageManager;
 };
 
