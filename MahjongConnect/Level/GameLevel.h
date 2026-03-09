@@ -75,6 +75,7 @@ public:
 
 	// 스테이지 번호에 따라 맵 초기화
 	void InitializeMap(int stageLevel);
+
 	// 핵심 연결 알고리즘
 	bool CanConnect(Vector2 start, Vector2 end, bool savePath);
     
@@ -87,7 +88,6 @@ public:
 	
 	// 좌표들 사이의 방향을 보고 적절한 선 문자를 반환하는 함수
 	std::string GetPathChar(Vector2 prev, Vector2 curr, Vector2 next);
-
 
 	// Getter
 	int GetRemainPairs() const { return m_remainPairs; }

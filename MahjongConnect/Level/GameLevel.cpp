@@ -5,6 +5,7 @@
 #include <queue>
 #include "Core/Input.h"
 #include "Actor/StageManager.h"
+#include <Windows.h>
 
 GameLevel::GameLevel()
     : pathDisplayTimer(5.0f)
@@ -334,9 +335,12 @@ Vector2 GameLevel::ScreenToGrid(Vector2 mousePos)
     {
         startPos.y = 5;
     }
+    // 판정 범위 확장
+    float relativeX = (mousePos.x - startPos.x);
+    float relativeY = (mousePos.y - startPos.y);
 
-    int gridX = (mousePos.x - startPos.x) / m_tileWidth;
-    int gridY = (mousePos.y - startPos.y) / m_tileHeight;
+    int gridX = static_cast<int>(floor(relativeX / m_tileWidth + 0.2f));
+    int gridY = static_cast<int>(floor(relativeY / m_tileHeight + 0.2f));
 
     return Vector2(gridX, gridY);
 }
@@ -355,19 +359,36 @@ std::string GameLevel::GetPathChar(Vector2 prev, Vector2 curr, Vector2 next)
     char ul = (char)217;
     char dl = (char)191;
 
-    if (up && down) return std::string("    ") + v + std::string("     ");
-    if (left && right) return std::string(10, h);
-    if (up && right) return std::string("    ") + ur + std::string(5, h);
-    if (down && right) return std::string("    ") + dr + std::string(5, h);
-    if (up && left) return std::string(4, h) + ul + std::string("     ");
-    if (down && left) return std::string(4, h) + dl + std::string("     ");
-
+    if (up && down)
+    {
+        return std::string("    ") + v + std::string("     ");
+    }
+    if (left && right)
+    {
+        return std::string(10, h);
+    }
+    if (down && right) 
+    {
+        return std::string("    ") + dr + std::string(5, h);
+    }
+    if (up && left) 
+    {
+        return std::string(4, h) + ul + std::string("     ");
+    }
+    if (down && left) 
+    {
+        return std::string(4, h) + dl + std::string("     ");
+    }
     return "          ";
 }
 
 void GameLevel::Draw()
 {
     Level::Draw();
+
+    // 마우스 호버타일 계산
+    Vector2 mousePos = Input::Get().GetMousePosition();
+    Vector2 hoverIdx = ScreenToGrid(mousePos);
 
     // 맵 순회하며 그리기
     for (int y = 0; y < m_mapSize.y; ++y)
@@ -378,7 +399,7 @@ void GameLevel::Draw()
 
             // 선택된(Hovered) 노드인지 확인
             bool isFirstSelected = (firstSelected == Vector2(x, y));
-
+            bool isHovered = (hoverIdx == Vector2(x, y));
             // 좌표 변환 후, draw
             Vector2 drawPos = GridToScreen(x, y);
 
@@ -426,6 +447,11 @@ void GameLevel::Draw()
             if (isFirstSelected)
             {
                 contentColor = Color::Yellow;
+            }
+            else if (isHovered)
+            {
+                contentColor = Color::White;
+                Renderer::Get().Submit(" > < ", drawPos, Color::White, 6);
             }
 
             Vector2 tileDrawPos = drawPos;
@@ -495,7 +521,6 @@ void GameLevel::HandleInput()
         
         if (isOutOfBounds || isEmptyClick)
         {
-            firstSelected = InvalidPos;
             return;
         }
 
@@ -540,7 +565,7 @@ void GameLevel::HandleInput()
                     else
                     {
                         // 연결 실패: 모양은 같으나 길이 없음
-                        // 판정을 후하게 하기 위해, 새로 찍은 타일을 '첫 번째'로 바꿉니다.
+                        // 새로 찍은 타일을 첫 번째로 변경
                         firstSelected = gridIdx;
                     }
                 }
@@ -555,7 +580,7 @@ void GameLevel::HandleInput()
     }
 }
         
-
+// 빈 그리드 만들기
 void GameLevel::CreateGrid(Vector2 size)
 {
 	// 실제 사용할 전체 크기 계산 (외곽 포함)
@@ -571,6 +596,7 @@ void GameLevel::CreateGrid(Vector2 size)
 	}
 }
 
+// 폭발 이펙트 만들기
 void GameLevel::CreateExplosion(Vector2 gridPos)
 {
     for (int i = 0; i < 8; ++i) // 입자 개수 증가

@@ -27,12 +27,12 @@ void MenuLevel::Draw()
 
     // 화면 정중앙 좌표 가져오기 (타이틀용)
     Vector2 screenSize = Renderer::Get().GetScreenSize();
-    Vector2 titlePos = Vector2(screenSize.x / 2 - 10 , screenSize.y / 2 - 18);
+    Vector2 titlePos = Vector2(screenSize.x / 2 + 12  , screenSize.y / 2 - 14);
     Vector2 rankBoardPos = Vector2(titlePos.x, exitGamePos.y + 2);
 
     // 버튼 위치
-    newGamePos = Vector2(screenSize.x / 2 - 5, titlePos.y + 8);
-    exitGamePos = Vector2(screenSize.x / 2 - 5, titlePos.y + 11);
+    newGamePos = Vector2(titlePos.x, titlePos.y + 6);
+    exitGamePos = Vector2(titlePos.x, titlePos.y + 8);
 
     // 마우스 위치 가져오기
     Vector2 mousePos = Input::Get().GetMousePosition();

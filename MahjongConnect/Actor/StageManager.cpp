@@ -10,7 +10,7 @@
 #include <iostream>
 
 StageManager::StageManager(GameLevel* level)
-	: m_level(level), m_currentStage(1), m_maxStage(2), m_state(GameState::Ready)
+	: m_level(level), m_currentStage(1), m_maxStage(5), m_state(GameState::Ready)
 {
 
 }
@@ -51,7 +51,7 @@ void StageManager::Draw()
 
 	// 화면 정중앙 좌표 계산
 	Vector2 screenSize = Renderer::Get().GetScreenSize();
-	Vector2 centerPos = Vector2(screenSize.x / 2 - 5, screenSize.y / 2);
+	Vector2 centerPos = Vector2(screenSize.x / 2 + 8 , screenSize.y / 2 - 4);
 
 	// 현재 상태에 따라 다른 UI 출력
 	switch (m_state)
