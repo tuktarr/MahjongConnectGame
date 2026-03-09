@@ -12,8 +12,9 @@ class StageManager;
 struct PathNode 
 {
 	int x, y, dir, turns;
-	// 나를 큐에 넣은 이전 좌표
-	Vector2 parent = Vector2(-1, -1);
+
+	// 역추적 대신, 지금까지 걸어온 경로
+	std::vector<Vector2> history;
 };
 
 // A* 알고리즘에서 먼저 탐색할 경로에 대한 기준
@@ -37,7 +38,7 @@ struct NodeComparer
 		int f_b = g_b + h_b;
 
 		// 점수가 낮은 것이 우선순위가 높아야 하므로 >
-		// 꺾임 횟수 적은 것을 최우선으로 탐색 pq에서 front를 안하고 top을 함
+		// 꺾임 횟수 적은 것을 최우선으로 탐색, pq에서는 front를 안하고 top을 함
 		if (f_a != f_b)
 		{
 			return f_a > f_b;

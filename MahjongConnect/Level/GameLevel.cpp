@@ -154,18 +154,18 @@ bool GameLevel::CanConnect(Vector2 start, Vector2 end)
     int dx[] = { 0,0,-1,1 };
     int dy[] = { -1,1,0,0 };
 
-    // 해당 좌표에서의 최소 꺾임 횟수 기록
-    std::vector<std::vector<int>> minTurns(m_mapSize.y, std::vector<int>(m_mapSize.x, 50));
-    // 부모 노드를 추적하기 위한 맵
-    // vector<vector<Vector2>> -> [][] 칸에 있는 내용물이 Vector2이다.
-    std::vector<std::vector<Vector2>> parentMap(m_mapSize.y, std::vector<Vector2>(m_mapSize.x, InvalidPos));
-
+    // minTurns[y][x][dir] : 해당 칸에 '특정 방향' 으로 들어왔을 때의 최소 꺾임 횟수
+    std::vector<std::vector<std::vector<int>>> minTurns(m_mapSize.y, std::vector<std::vector<int>>(m_mapSize.x, std::vector<int>(4, 50)));
+    
     // A* 탐색을 위한 우선순위 큐
     // 명시적 객체 선언
-    NodeComparer comparer(end); // 생성자 인자 선언
+    NodeComparer comparer(end); // 생성자 인자 선언 (목적지)
     std::priority_queue<PathNode, std::vector<PathNode>,NodeComparer> pq(comparer);
-    pq.push({ start.x,start.y, -1, 0, InvalidPos });
-    minTurns[start.y][start.x] = 0;
+    pq.push({ start.x,start.y, -1, 0, {start} });
+    for (int ix = 0; ix < 4; ix++)
+    {
+        minTurns[start.y][start.x][ix] = 0;
+    }
 
     // 목적지 큐 뽑아내기
     while (!pq.empty())
@@ -173,15 +173,10 @@ bool GameLevel::CanConnect(Vector2 start, Vector2 end)
         PathNode curr = pq.top();
         pq.pop();
 
-        // 목표 도달 시 경로 역추적
+        // 목표 도달 시, history 경로 그대로 넘겨주기
         if (curr.x == end.x && curr.y == end.y)
         {
-            Vector2 backTrace = Vector2(curr.x, curr.y);
-            while (backTrace != InvalidPos)
-            {
-                m_currentPath.push_back(backTrace);
-                backTrace = parentMap[backTrace.y][backTrace.x]; // 부모 좌표로 이동
-            }
+            m_currentPath = curr.history;
             return true;
         }
 
@@ -206,14 +201,20 @@ bool GameLevel::CanConnect(Vector2 start, Vector2 end)
                     continue;
                 }
 
-                // 이동 가능한지 확인
+                // 이동 가능한지 확인 (목적지 || 빈공간)
                 if ((nx == end.x && ny == end.y) || m_map[ny][nx] == NodeType::Empty)
                 {
-                    if (totalTurns <= minTurns[ny][nx])
+
+                    // '해당 방향'으로 진입할 때의 기록과 비교해서 이득일 때만 탐색
+                    if (totalTurns <= minTurns[ny][nx][dir])
                     {
-                        minTurns[ny][nx] = totalTurns;
-                        parentMap[ny][nx] = Vector2(curr.x, curr.y);
-                        pq.push({ nx,ny,dir,totalTurns, Vector2(curr.x,curr.y)});
+                        minTurns[ny][nx][dir] = totalTurns;
+                        
+                        // 지금까지 걸어온 길(history)를 복사해서 다음 칸 위치를 추가
+                        std::vector<Vector2> nextHistory = curr.history;
+                        nextHistory.push_back(Vector2(nx, ny));
+
+                        pq.push({ nx,ny,dir,totalTurns,nextHistory });
                     }
                 }
             }
@@ -226,10 +227,16 @@ bool GameLevel::CanConnect(Vector2 start, Vector2 end)
 
 Vector2 GameLevel::GridToScreen(int x, int y)
 {
+    int yOffset = -8;
     Vector2 startPos(
         (Renderer::Get().GetScreenSize().x - (m_mapSize.x * m_tileWidth)) / 2,
-        (Renderer::Get().GetScreenSize().y - (m_mapSize.y * m_tileHeight)) / 2
+        (Renderer::Get().GetScreenSize().y - (m_mapSize.y * m_tileHeight)) / 2 + yOffset
     );
+
+    if (startPos.y < 5)
+    {
+        startPos.y = 5;
+    }
 
     int ScreenX = (startPos.x + (x * m_tileWidth));
     int ScreenY = (startPos.y + (y * m_tileHeight));
@@ -239,10 +246,16 @@ Vector2 GameLevel::GridToScreen(int x, int y)
 
 Vector2 GameLevel::ScreenToGrid(Vector2 mousePos)
 {
+    int yOffset = -8;
     Vector2 startPos(
         (Renderer::Get().GetScreenSize().x - (m_mapSize.x * m_tileWidth)) / 2,
-        (Renderer::Get().GetScreenSize().y - (m_mapSize.y * m_tileHeight)) / 2
+        ((Renderer::Get().GetScreenSize().y - (m_mapSize.y * m_tileHeight)) / 2) + yOffset
     );
+
+    if (startPos.y < 5)
+    {
+        startPos.y = 5;
+    }
 
     int gridX = (mousePos.x - startPos.x) / m_tileWidth;
     int gridY = (mousePos.y - startPos.y) / m_tileHeight;
@@ -340,7 +353,7 @@ void GameLevel::Draw()
 
             Vector2 tileDrawPos = drawPos;
             tileDrawPos.x += 3;
-
+            
             // 그리기 제출
             Renderer::Get().Submit(tileText, drawPos, contentColor, 5);
         }
@@ -395,72 +408,76 @@ void GameLevel::HandleInput()
 
         // 스크린 좌표 -> 그리드 인덱스 변환
         Vector2 gridIdx = ScreenToGrid(mousePos);
-        // 유효범위 검사 (맵 안을 클릭했는지?)
-        // 유효한 조건
-        if (gridIdx.x >= 0 && gridIdx.x < m_mapSize.x && gridIdx.y >= 0 && gridIdx.y < m_mapSize.y)
+
+        // 유효범위 검사
+        // 맵 범위를 벗어난 클릭인가?
+        bool isOutOfBounds = (gridIdx.x < 0 || gridIdx.x >= m_mapSize.x || gridIdx.y < 0 || gridIdx.y >= m_mapSize.y);
+
+        // 빈 공간을 클릭했는가?
+        bool isEmptyClick = (!isOutOfBounds && m_map[gridIdx.y][gridIdx.x] == NodeType::Empty);
+        
+        if (isOutOfBounds || isEmptyClick)
         {
-            // 빈칸 클릭 시, 처음에 호버된 인덱스 없게 만들기
-            if (m_map[gridIdx.y][gridIdx.x] == NodeType::Empty)
+            firstSelected = InvalidPos;
+            return;
+        }
+
+        if (firstSelected == gridIdx)
+        {
+            firstSelected = InvalidPos;
+        }
+        else
+        {
+            // 첫 번째 선택이 없다면 선택
+            if (firstSelected == InvalidPos)
             {
-                firstSelected = InvalidPos;
-                return;
+                firstSelected = gridIdx;
             }
 
-            // 이미 선택된 곳을 선택한다면 Hover 해제
-            // 아무것도 선택하지 않은 상태를 Vector2(-1,-1)로
-            if (firstSelected == gridIdx)
-            {
-                firstSelected = InvalidPos;
-            }
+            // 두 번째 타일을 선택
             else
             {
-                // 아무것도 선택되지 않은 상태라면 마우스 찍은 곳에 Hover
-                if (firstSelected == InvalidPos)
+                secondSelected = gridIdx;
+
+                // 같은 모양인지 확인
+                if (m_map[firstSelected.y][firstSelected.x] == m_map[secondSelected.y][secondSelected.x])
                 {
-                    firstSelected = gridIdx;
+                    if (CanConnect(firstSelected, secondSelected))
+                    {
+                        // 연결 성공
+                        m_map[firstSelected.y][firstSelected.x] = NodeType::Empty;
+                        m_map[secondSelected.y][secondSelected.x] = NodeType::Empty;
+                        m_remainPairs--;
+
+                        for (int i = 0; i < m_currentPath.size(); i += 2)
+                        {
+                            m_effects.emplace_back(m_currentPath[i], Vector2(0, 0), ".", 0.2f, Color::Cyan);
+                        }
+
+                        CreateExplosion(firstSelected);
+                        CreateExplosion(secondSelected);
+                        pathDisplayTimer.Reset();
+
+                        firstSelected = InvalidPos; // 성공 후 초기화
+                    }
+                    else
+                    {
+                        // 연결 실패: 모양은 같으나 길이 없음
+                        // 판정을 후하게 하기 위해, 새로 찍은 타일을 '첫 번째'로 바꿉니다.
+                        firstSelected = gridIdx;
+                    }
                 }
-                // 두 번째로 찍은 곳에 대해 BFS, A* 알고리즘 실행
                 else
                 {
-                    secondSelected = gridIdx;
-
-                    if (m_map[firstSelected.y][firstSelected.x] == m_map[secondSelected.y][secondSelected.x])
-                    {
-                        // BFS 실행 -> 직선/꺾임 체크 함수 호출
-                        if (CanConnect(firstSelected, secondSelected))
-                        {
-                            // 연결 성공
-                            m_map[firstSelected.y][firstSelected.x] = NodeType::Empty;
-                            m_map[secondSelected.y][secondSelected.x] = NodeType::Empty;
-
-                            m_remainPairs--;
-
-                            // 경로 잔상 이펙트 (순차적 느낌을 위해 i값에 따라 수명 조절)
-                            for (int i = 0; i < m_currentPath.size(); i+=2)
-                            {
-                                m_effects.emplace_back(m_currentPath[i], Vector2(0, 0), ".", 0.2f, Color::Cyan);
-                            }
-
-                            // 폭발 이펙트 발생
-                            CreateExplosion(firstSelected);
-                            CreateExplosion(secondSelected);
-
-                            // 타이머 리셋하고 경로 그리기
-                            pathDisplayTimer.Reset();
-
-                            firstSelected = InvalidPos;
-                        }
-                        else
-                        {
-                            // 만약 둘의 타입이 다르면 Hover 제거
-                            firstSelected = InvalidPos;
-                        }
-                    }
+                    // 연결 실패: 모양이 다름
+                    // 기존 거 풀고 방금 찍은 걸 첫 번째 선택으로 변경
+                    firstSelected = gridIdx;
                 }
             }
         }
     }
 }
+        
 
 void GameLevel::CreateGrid(Vector2 size)
 {

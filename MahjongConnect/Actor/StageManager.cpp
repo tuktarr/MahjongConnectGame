@@ -2,6 +2,10 @@
 #include "Level/GameLevel.h"
 #include "Core/Input.h"
 #include "Render/Renderer.h"
+#include "Util/RankManager.h"
+#include "Engine/Engine.h"
+#include "Level/MenuLevel.h"
+
 StageManager::StageManager(GameLevel* level)
 	: m_level(level), m_currentStage(1), m_maxStage(5), m_state(GameState::Ready)
 {
@@ -101,12 +105,15 @@ void StageManager::UpdateReady(float deltaTime)
 
 void StageManager::UpdatePlaying(float deltaTime)
 {
-	// TODO : 타임아웃 타이머 진행
+	// 타임아웃 타이머 진행
 	m_playerTimer.Tick(deltaTime);
 	
 	// 타일 모두 제거 시, StageClear 상태로
 	if (m_level->GetRemainPairs() <= 0)
 	{
+		// 현재 스테이지에서 남은 시간을 총합 변수에 누적
+		m_totalRemainTime += static_cast<int>(m_playerTimer.GetRemainTime());
+
 		m_state = GameState::StageClear;
 		m_stateTimer.Reset();
 		m_stateTimer.SetTargetTime(3.0f);
@@ -140,6 +147,8 @@ void StageManager::UpdateStageClear(float deltaTime)
 		// 만약 마지막 스테이지를 깼다면 엔딩 처리
 		if (m_currentStage > m_maxStage)
 		{
+			RankManager::Get().AddScore(m_totalRemainTime);
+
 			m_state = GameState::GameOver;
 			m_stateTimer.Reset();
 			m_stateTimer.SetTargetTime(3.0f);
@@ -162,9 +171,10 @@ void StageManager::UpdateGameOver(float deltaTime)
 		// 데이터 초기화
 		m_currentStage = 1;
 
-		// 임시 사용
-		m_state = GameState::Ready;
+		// 누적 시간 초기화
+		m_totalRemainTime = 0;
+
 		// 게임 시작 메뉴로 이동
-		// TODO : 게임 시작 메뉴 구현
+		Engine::Get().SetNewLevel(new MenuLevel);
 	}
 }

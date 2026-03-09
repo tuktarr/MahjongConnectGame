@@ -43,5 +43,6 @@ private:
 	// 상태 전환 딜레이용 타이머
 	Timer m_stateTimer;
 
+	int m_totalRemainTime = 0;
 };
 

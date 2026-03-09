@@ -3,6 +3,7 @@
 #include "Core/Input.h"
 #include "Util/Util.h"
 #include "Render/Renderer.h"
+#include "Util/RankManager.h"
 
 #include <iostream>
 #include <Windows.h>
@@ -25,6 +26,9 @@ namespace Wanted
 
 		// 렌더러 객체 생성
 		renderer = new Renderer(Vector2(setting.width, setting.height));
+
+		// 랭킹 매니저 초기화
+		RankManager::Get().Init();
 
 		// 커서 끄기
 		Util::TurnOffCursor();

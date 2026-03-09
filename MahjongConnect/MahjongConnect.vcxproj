@@ -88,12 +88,14 @@
   <ItemGroup>
     <ClCompile Include="Actor\StageManager.cpp" />
     <ClCompile Include="Level\GameLevel.cpp" />
+    <ClCompile Include="Level\MenuLevel.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Util\Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Actor\StageManager.h" />
     <ClInclude Include="Level\GameLevel.h" />
+    <ClInclude Include="Level\MenuLevel.h" />
     <ClInclude Include="Util\Timer.h" />
     <ClInclude Include="Util\Types.h" />
   </ItemGroup>
