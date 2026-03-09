@@ -1,6 +1,7 @@
 #pragma once
 #include "Math/Vector2.h"
 #include "Math/Color.h"
+#include "Render/Renderer.h"
 #include <time.h>
 
 using namespace Wanted;
@@ -40,6 +41,19 @@ namespace Util
 			GetStdHandle(STD_OUTPUT_HANDLE),
 			&info
 		);
+	}
+
+	inline void SetCursorPosition(int x, int y)
+	{
+		HANDLE hConsole = Renderer::Get().GetActiveHandle();
+
+		COORD pos = { (SHORT)x, (SHORT)y };
+		SetConsoleCursorPosition(hConsole, pos);
+	}
+
+	inline void SetCursorPosition(Vector2 pos)
+	{
+		SetCursorPosition(pos.x, pos.y);
 	}
 
 	// 어떤 값을 두 수 사이로 고정할 때 사용하는 함수.

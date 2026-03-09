@@ -4,6 +4,7 @@
 using namespace Wanted;
 int main()
 {
+
 	Engine engine;
 	engine.SetNewLevel(new MenuLevel());
 	engine.Run();

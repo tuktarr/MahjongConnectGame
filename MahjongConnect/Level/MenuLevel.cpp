@@ -54,18 +54,19 @@ void MenuLevel::Draw()
     Renderer::Get().Submit("====== Top 5 RANKING ======", rankBoardPos, Color::Green, 100);
 
     // 랭킹 데이터 가져오기
-    const std::vector<int>& rankings = RankManager::Get().GetRankings();
+    const std::vector<RankData>& rankings = RankManager::Get().GetRankings();
 
     // 랭킹 데이터 없을 때
     if (rankings.empty())
     {
         Renderer::Get().Submit("     No Records Yet.     ", Vector2(rankBoardPos.x, rankBoardPos.y + 2), Color::Gray, 100);
     }
+    // 랭킹 데이터 출력
     else
     {
         for (size_t i = 0; i < rankings.size(); ++i)
         {
-            std::string rankText = "     " + std::to_string(i + 1) + "등 :  " + std::to_string(rankings[i]) + " 초 남김";
+            std::string rankText = "     " + std::to_string(i + 1) + "등 :  " + rankings[i].name + " " + std::to_string(rankings[i].score) + " 초 남김";
 
             Renderer::Get().Submit(rankText, Vector2(rankBoardPos.x, rankBoardPos.y + 2 + i * 2), Color::White, 100);
         }

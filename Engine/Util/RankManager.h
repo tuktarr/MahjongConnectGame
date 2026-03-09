@@ -6,6 +6,12 @@
 
 namespace Wanted
 {
+    // 랭킹 정보를 담을 구조체 추가
+    struct RankData
+    {
+        std::string name;
+        int score;
+    };
 
     class WANTED_API RankManager
     {
@@ -14,17 +20,19 @@ namespace Wanted
         static RankManager& Get();
 
         void Init(); // 초기화 (파일 불러오기)
-        void AddScore(int newScore); // 새 점수 추가 및 정렬
+        void AddScore(const std::string& name, int newScore); // 새 점수 추가 및 정렬
         void Save(); // 파일로 저장하기
 
         // 랭킹 데이터 가져오기 (메뉴에서 그릴 때 사용)
-        const std::vector<int>& GetRankings() const { return rankings; }
+        const std::vector<RankData>& GetRankings() const { return rankings; }
+
+        bool IsRankIn(int score);
 
     private:
         RankManager() = default;
         ~RankManager() = default;
 
-        std::vector<int> rankings; // 점수들을 담아둘 배낭
+        std::vector<RankData> rankings; // 점수들을 담아둘 배낭
         std::string filePath = "../Config/Ranking.txt"; // 저장할 파일 경로
     };
 }

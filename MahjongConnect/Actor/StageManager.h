@@ -27,6 +27,10 @@ private:
 	void UpdatePlaying(float deltaTime);
 	void UpdateStageClear(float deltaTime);
 	void UpdateGameOver(float deltaTime);
+
+	// 플레이어 이름을 입력받는 전용 함수
+	std::string InputPlayerName(const Vector2& centerPos);
+
 private:
 	GameLevel* m_level; 
 	// 현재 스테이지 번호
@@ -42,6 +46,9 @@ private:
 
 	// 상태 전환 딜레이용 타이머
 	Timer m_stateTimer;
+
+	// 교착 상태 체크용 타이머
+	Timer m_deadlockTimer;
 
 	int m_totalRemainTime = 0;
 };

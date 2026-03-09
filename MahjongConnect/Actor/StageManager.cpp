@@ -5,9 +5,12 @@
 #include "Util/RankManager.h"
 #include "Engine/Engine.h"
 #include "Level/MenuLevel.h"
+#include "Util/Util.h"
+#include <conio.h>
+#include <iostream>
 
 StageManager::StageManager(GameLevel* level)
-	: m_level(level), m_currentStage(1), m_maxStage(5), m_state(GameState::Ready)
+	: m_level(level), m_currentStage(1), m_maxStage(2), m_state(GameState::Ready)
 {
 
 }
@@ -94,7 +97,6 @@ void StageManager::UpdateReady(float deltaTime)
 		m_level->InitializeMap(m_currentStage);
 	
 		// 타이머 리셋
-		// TODO : 나중에 랭킹 시스템을 위해서 Timer의 시간을 저장해야함
 		m_playerTimer.Reset();
 		m_playerTimer.SetTargetTime(60.0f);
 
@@ -129,8 +131,18 @@ void StageManager::UpdatePlaying(float deltaTime)
 		return;
 	}
 
-	// TODO : 교착 상태 발생 시, GameOver 상태로
+	// 교착 상태 타이머 진행
+	m_deadlockTimer.Tick(deltaTime);
 
+	// 교착 상태 발생 시, GameOver 상태로
+	if (m_level->IsDeadLock())
+	{
+		m_state = GameState::GameOver;
+		m_stateTimer.Reset();
+		m_stateTimer.SetTargetTime(2.0f);
+		return;
+	}
+	m_deadlockTimer.Tick(deltaTime);
 }
 
 void StageManager::UpdateStageClear(float deltaTime)
@@ -141,26 +153,48 @@ void StageManager::UpdateStageClear(float deltaTime)
 	// 스테이지 클리어 시, m_currentStage++
 	if (m_stateTimer.IsTimeOut())
 	{
-		// 스테이지 증가
 		m_currentStage++;
 
-		// 만약 마지막 스테이지를 깼다면 엔딩 처리
 		if (m_currentStage > m_maxStage)
 		{
-			RankManager::Get().AddScore(m_totalRemainTime);
+			// 공통 좌표 계산
+			Vector2 screenSize = Renderer::Get().GetScreenSize();
+			Vector2 centerPos = Vector2(screenSize.x / 2 - 12, screenSize.y / 2);
+
+			// 랭킹 진입 여부 확인
+			if (RankManager::Get().IsRankIn(m_totalRemainTime))
+			{
+				// 입력 전 버퍼 비우기
+				while (_kbhit())
+				{
+					_getch();
+				}
+
+				std::string playerName = InputPlayerName(centerPos);
+
+				RankManager::Get().AddScore(playerName, m_totalRemainTime);
+			}
+			else
+			{
+				Renderer::Get().Clear();
+				Renderer::Get().Submit("STAGE CLEAR!", centerPos, Color::Green, 100);
+				Renderer::Get().Submit("Try Faster!!", centerPos + Vector2(0, 2), Color::White, 100);
+				Renderer::Get().Draw();
+
+				Sleep(1500);
+			}
 
 			m_state = GameState::GameOver;
 			m_stateTimer.Reset();
-			m_stateTimer.SetTargetTime(3.0f);
+			m_stateTimer.SetTargetTime(1.0f);
 		}
 		else
 		{
-			// 다음 스테이지 준비 상태로 돌입
 			m_state = GameState::Ready;
 		}
 	}
-	
 }
+				
 
 void StageManager::UpdateGameOver(float deltaTime)
 {
@@ -176,5 +210,54 @@ void StageManager::UpdateGameOver(float deltaTime)
 
 		// 게임 시작 메뉴로 이동
 		Engine::Get().SetNewLevel(new MenuLevel);
+	}
+}
+
+std::string StageManager::InputPlayerName(const Vector2& centerPos)
+{
+	std::string playerName = "";
+	Util::TurnOnCursor();
+
+	while (true)
+	{
+		Renderer::Get().Clear();
+		Renderer::Get().Submit("Enter Your NAME(English Only): " + playerName, centerPos, Color::Yellow, 100);
+		Renderer::Get().Draw();
+
+		// 커서 위치 업데이트
+		Util::SetCursorPosition(centerPos.x + 31 + (int)playerName.length(), centerPos.y);
+	
+		while (_kbhit())
+		{
+			int ch = _getch();
+
+			if (ch == 13)
+			{
+				if(!playerName.empty())
+				{
+					Util::TurnOffCursor();
+					return playerName;
+				}
+			}
+			else if (ch == 8)
+			{
+				if (!playerName.empty())
+				{
+					playerName.pop_back();
+				}
+			}
+			else if (ch == 224 || ch == 0)
+			{
+				_getch();
+			}
+			else if (ch >= 32 && ch <= 126) // 영어, 숫자 필터링
+			{
+				if (playerName.length() < 15)
+				{
+					playerName += (char)ch;
+				}
+			}
+			Sleep(10);
+		}
 	}
 }

@@ -70,6 +70,7 @@ void GameLevel::InitializeMap(int stageLevel)
     m_effects.clear();
     firstSelected = InvalidPos;
     secondSelected = InvalidPos;
+
 	// 스테이지에 따른 사이즈 결정
 	Vector2 playSize;
     switch (stageLevel)
@@ -96,59 +97,81 @@ void GameLevel::InitializeMap(int stageLevel)
 
     // 물리적 빈 그리드 생성
 	CreateGrid(playSize);
+    
+    // 풀 수 있는 맵이 나올 때까지 반복 생성(While문)
+    int attempt = 0;
+    const int MAX_ATTEMPTS = 50;
 
-    // 배치할 아이템 리스트 준비
-    std::vector<Vector2> validPositions;
-
-    // Grid 영역 순회 ( 외곽은 어처피 empty -> 초기에 empty로 초기화, 0번인덱스 순회 안함)
-    for (int y = 1; y <= playSize.y; ++y)
+    while (attempt < MAX_ATTEMPTS)
     {
-        for (int x = 1; x <= playSize.x; ++x)
+        for (auto& row : m_map)
         {
-            // Vector.x * Vector.y 의 값이 홀수인 스테이지인 경우 중앙은 비워둠
-            bool isOddMap = (playSize.x * playSize.y) % 2 == 1;
-            Vector2 center(playSize.x / 2 + 1, playSize.y / 2 + 1);
-
-            if (isOddMap && x == center.x && y == center.y)
-            {
-                continue;
-            }
-
-            validPositions.emplace_back(x,y);
+            std::fill(row.begin(), row.end(), NodeType::Empty);
         }
+
+        // 배치할 아이템 리스트 준비
+        std::vector<Vector2> validPositions;
+
+        // Grid 영역 순회 ( 외곽은 어처피 empty -> 초기에 empty로 초기화, 0번인덱스 순회 안함)
+        for (int y = 1; y <= playSize.y; ++y)
+        {
+            for (int x = 1; x <= playSize.x; ++x)
+            {
+                // Vector.x * Vector.y 의 값이 홀수인 스테이지인 경우 중앙은 비워둠
+                bool isOddMap = (playSize.x * playSize.y) % 2 == 1;
+                Vector2 center(playSize.x / 2 + 1, playSize.y / 2 + 1);
+
+                if (isOddMap && x == center.x && y == center.y)
+                {
+                    continue;
+                }
+
+                validPositions.emplace_back(x, y);
+            }
+        }
+        // 무작위 씨앗 준비
+        std::random_device randomDevice;
+        // 씨앗을 '엄청나게 빠른 숫자 생성기'에 넣음
+        std::mt19937 shuffleEngine(randomDevice());
+        // 생성기의 힘을 빌려 아이템을 섞음
+        std::shuffle(validPositions.begin(), validPositions.end(), shuffleEngine);
+
+        // 아이템 리스트에 짝을 맞춰 종류 할당
+        int pairCount = static_cast<int>(validPositions.size() / 2);
+        // 실제 사용할 패의 종류 개수
+        int typeRange = static_cast<int>(NodeType::Max) - 1;
+
+        for (int i = 0; i < pairCount; ++i)
+        {
+            // 타입 패 개수 초과 시, 순환하며 할당
+            NodeType type = static_cast<NodeType>((i % typeRange) + 1);
+
+            // 리스트에 두 칸씩 같은 타입을 채움.
+            Vector2 pos1 = validPositions[i * 2];
+            Vector2 pos2 = validPositions[i * 2 + 1];
+
+            m_map[pos1.y][pos1.x] = type;
+            m_map[pos2.y][pos2.x] = type;
+        }
+
+        if (!IsDeadLock())
+        {
+            m_remainPairs = pairCount;
+            return;
+        }
+
+        attempt++; // 맵을 제작했는데 풀 수 없다면 루프 게이지 1 추가
     }
-    // 무작위 씨앗 준비
-    std::random_device randomDevice;
-    // 씨앗을 '엄청나게 빠른 숫자 생성기'에 넣음
-    std::mt19937 shuffleEngine(randomDevice());
-    // 생성기의 힘을 빌려 아이템을 섞음
-    std::shuffle(validPositions.begin(), validPositions.end(), shuffleEngine);
 
-    // 아이템 리스트에 짝을 맞춰 종류 할당
-    int pairCount = static_cast<int>(validPositions.size() / 2);
-    // 실제 사용할 패의 종류 개수
-    int typeRange = static_cast<int>(NodeType::Max) - 1;
-
-    for (int i = 0; i < pairCount; ++i)
-    {
-        // 타입 패 개수 초과 시, 순환하며 할당
-        NodeType type = static_cast<NodeType>((i % typeRange) + 1);
-        
-        // 리스트에 두 칸씩 같은 타입을 채움.
-        Vector2 pos1 = validPositions[i * 2];
-        Vector2 pos2 = validPositions[i * 2 + 1];
-
-        m_map[pos1.y][pos1.x] = type;
-        m_map[pos2.y][pos2.x] = type;
-    }
-
-    m_remainPairs = pairCount;
 }
 
-bool GameLevel::CanConnect(Vector2 start, Vector2 end)
+bool GameLevel::CanConnect(Vector2 start, Vector2 end, bool savePath)
 {
     // 이전 경로 초기화
-    m_currentPath.clear(); 
+    if (savePath)
+    {
+        m_currentPath.clear(); 
+    }
 
     // 방향 : 상(0) 하(1) 좌(2) 우(3)
     int dx[] = { 0,0,-1,1 };
@@ -176,7 +199,10 @@ bool GameLevel::CanConnect(Vector2 start, Vector2 end)
         // 목표 도달 시, history 경로 그대로 넘겨주기
         if (curr.x == end.x && curr.y == end.y)
         {
-            m_currentPath = curr.history;
+            if (savePath)
+            {
+                m_currentPath = curr.history;
+            }
             return true;
         }
 
@@ -211,8 +237,12 @@ bool GameLevel::CanConnect(Vector2 start, Vector2 end)
                         minTurns[ny][nx][dir] = totalTurns;
                         
                         // 지금까지 걸어온 길(history)를 복사해서 다음 칸 위치를 추가
-                        std::vector<Vector2> nextHistory = curr.history;
-                        nextHistory.push_back(Vector2(nx, ny));
+                        std::vector<Vector2> nextHistory;
+                        if (savePath)
+                        {
+                            nextHistory = curr.history;
+                            nextHistory.push_back(Vector2(nx, ny));
+                        }
 
                         pq.push({ nx,ny,dir,totalTurns,nextHistory });
                     }
@@ -223,6 +253,54 @@ bool GameLevel::CanConnect(Vector2 start, Vector2 end)
 
     }
     return false;
+}
+
+bool GameLevel::IsDeadLock()
+{
+    const int MAX_TILE_TYPE = 10;
+    std::vector<std::vector<Vector2>> tileGroups(MAX_TILE_TYPE);
+    for (int y = 0; y < m_mapSize.y; ++y)
+    {
+        for (int x = 0; x < m_mapSize.x; ++x)
+        {
+            if (m_map[y][x] != NodeType::Empty)
+            {
+                // 인덱스로 종류 결정
+                int typeIndex = static_cast<int>(m_map[y][x]);
+                if (typeIndex < MAX_TILE_TYPE)
+                {
+                    tileGroups[typeIndex].push_back(Vector2(x, y));
+                }
+            }
+        }
+    }
+
+    // 같은 종류의 패들끼리 짝 지어 CanConnect 시도
+    for (int i = 0; i < MAX_TILE_TYPE; ++i)
+    {
+        const std::vector<Vector2>& positions = tileGroups[i];
+        size_t count = positions.size();
+        
+        // 짝을 맞출 수 있을 때만 비교
+        if (count < 2)
+        {
+            continue;
+        }
+        
+        // A - B, B - A 는 같은 경우이므로 B부터 순회할 경우는 A 건너뛰고 C로부터 시작
+        for (size_t first = 0; first < count; ++first)
+        {
+            for (size_t second = first + 1; second < count; ++second)
+            {
+                // 단 하나라도 연결 가능한 경로가 있다면 교착 상태 x
+                if (CanConnect(positions[first], positions[second],false))
+                {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
 }
 
 Vector2 GameLevel::GridToScreen(int x, int y)
@@ -286,7 +364,6 @@ std::string GameLevel::GetPathChar(Vector2 prev, Vector2 curr, Vector2 next)
 
     return "          ";
 }
-
 
 void GameLevel::Draw()
 {
@@ -442,7 +519,7 @@ void GameLevel::HandleInput()
                 // 같은 모양인지 확인
                 if (m_map[firstSelected.y][firstSelected.x] == m_map[secondSelected.y][secondSelected.x])
                 {
-                    if (CanConnect(firstSelected, secondSelected))
+                    if (CanConnect(firstSelected, secondSelected,true))
                     {
                         // 연결 성공
                         m_map[firstSelected.y][firstSelected.x] = NodeType::Empty;

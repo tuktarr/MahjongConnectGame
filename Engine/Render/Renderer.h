@@ -75,6 +75,8 @@ namespace Wanted
 		// 화면 지우는 함수
 		void Clear();
 	
+		HANDLE GetActiveHandle();
+
 	private:
 	
 		// 더블 버퍼링을 활용해 활성화 버퍼를 교환하는 함수

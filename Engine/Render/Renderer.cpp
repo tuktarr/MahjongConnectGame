@@ -189,6 +189,11 @@ namespace Wanted
 
 	}
 
+	HANDLE Renderer::GetActiveHandle()
+	{
+		return GetCurrentBuffer()->GetBuffer();;
+	}
+
 	void Renderer::Submit(
 		const std::string& text,
 		const Vector2& position,
