@@ -185,14 +185,11 @@ bool GameLevel::CanConnect(Vector2 start, Vector2 end, bool savePath)
     std::vector<std::vector<std::vector<ParentInfo>>> parentMap(m_mapSize.y, std::vector<std::vector<ParentInfo>>(m_mapSize.x, std::vector<ParentInfo>(4)));
     
     // A* 탐색을 위한 우선순위 큐
-
-    std::priority_queue<PathNode, std::vector<PathNode>, NodeComparer> pq{ NodeComparer(end) }; // X
-
     // 명시적 객체 선언
-    //NodeComparer comparer(end); // 생성자 인자 선언 (목적지)
-    //// <데이터 타입, 컨테이너, 정렬 기준>
-    //std::priority_queue<PathNode, std::vector<PathNode>,NodeComparer> pq(comparer);
-    //
+    NodeComparer comparer(end); // 생성자 인자 선언 (목적지)
+    // <데이터 타입, 컨테이너, 정렬 기준>
+    std::priority_queue<PathNode, std::vector<PathNode>,NodeComparer> pq(comparer);
+    
     // 시작점 설정
     for (int i = 0; i < 4; i++)
     {
@@ -424,7 +421,7 @@ void GameLevel::ClearCurrentPath()
 
 void GameLevel::Draw()
 {
-    Level::Draw();
+    super::Draw();
 
     // 마우스 호버타일 계산
     Vector2 mousePos = Input::Get().GetMousePosition();
