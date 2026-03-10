@@ -126,6 +126,7 @@ void StageManager::UpdatePlaying(float deltaTime)
 	// 제한 시간 초과 시, GameOver 상태로
 	if (m_playerTimer.IsTimeOut())
 	{
+		m_level->ClearCurrentPath();
 		m_state = GameState::GameOver;
 		m_stateTimer.Reset();
 		m_stateTimer.SetTargetTime(3.0f);
@@ -138,6 +139,7 @@ void StageManager::UpdatePlaying(float deltaTime)
 	// 교착 상태 발생 시, GameOver 상태로
 	if (m_level->IsDeadLock())
 	{
+		m_level->ClearCurrentPath();
 		m_state = GameState::GameOver;
 		m_stateTimer.Reset();
 		m_stateTimer.SetTargetTime(2.0f);
