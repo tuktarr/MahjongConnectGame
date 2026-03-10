@@ -46,3 +46,13 @@ float Timer::GetRemainTime() const
 	float remain = targetTime - elapsedTime;
 	return (remain > 0.0f) ? remain : 0.0f; // 음수 시간 방지
 }
+
+void Timer::SetElapsedTime(float deltatime)
+{
+	elapsedTime = deltatime;
+}
+
+void Timer::Finish()
+{
+	elapsedTime = targetTime;
+}

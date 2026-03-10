@@ -116,6 +116,7 @@ void StageManager::UpdatePlaying(float deltaTime)
 		// 현재 스테이지에서 남은 시간을 총합 변수에 누적
 		m_totalRemainTime += static_cast<int>(m_playerTimer.GetRemainTime());
 
+		m_level->ClearCurrentPath();
 		m_state = GameState::StageClear;
 		m_stateTimer.Reset();
 		m_stateTimer.SetTargetTime(3.0f);
@@ -153,6 +154,10 @@ void StageManager::UpdateStageClear(float deltaTime)
 	// 스테이지 클리어 시, m_currentStage++
 	if (m_stateTimer.IsTimeOut())
 	{
+
+		// TODO : 타이머 강제 초기화시키기
+		m_level->ClearCurrentPath();
+
 		m_currentStage++;
 
 		if (m_currentStage > m_maxStage)

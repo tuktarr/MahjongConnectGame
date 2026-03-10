@@ -180,16 +180,27 @@ bool GameLevel::CanConnect(Vector2 start, Vector2 end, bool savePath)
 
     // minTurns[y][x][dir] : 해당 칸에 '특정 방향' 으로 들어왔을 때의 최소 꺾임 횟수
     std::vector<std::vector<std::vector<int>>> minTurns(m_mapSize.y, std::vector<std::vector<int>>(m_mapSize.x, std::vector<int>(4, 50)));
+   
+    // 부모 정보 기록용 3차원 배열
+    std::vector<std::vector<std::vector<ParentInfo>>> parentMap(m_mapSize.y, std::vector<std::vector<ParentInfo>>(m_mapSize.x, std::vector<ParentInfo>(4)));
     
     // A* 탐색을 위한 우선순위 큐
+
+    std::priority_queue<PathNode, std::vector<PathNode>, NodeComparer> pq{ NodeComparer(end) }; // X
+
     // 명시적 객체 선언
-    NodeComparer comparer(end); // 생성자 인자 선언 (목적지)
-    std::priority_queue<PathNode, std::vector<PathNode>,NodeComparer> pq(comparer);
-    pq.push({ start.x,start.y, -1, 0, {start} });
-    for (int ix = 0; ix < 4; ix++)
+    //NodeComparer comparer(end); // 생성자 인자 선언 (목적지)
+    //// <데이터 타입, 컨테이너, 정렬 기준>
+    //std::priority_queue<PathNode, std::vector<PathNode>,NodeComparer> pq(comparer);
+    //
+    // 시작점 설정
+    for (int i = 0; i < 4; i++)
     {
-        minTurns[start.y][start.x][ix] = 0;
+        minTurns[start.y][start.x][i] = 0;
     }
+    pq.push({ start.x, start.y, -1,0 });
+
+    int finalDir = -1;
 
     // 목적지 큐 뽑아내기
     while (!pq.empty())
@@ -197,12 +208,29 @@ bool GameLevel::CanConnect(Vector2 start, Vector2 end, bool savePath)
         PathNode curr = pq.top();
         pq.pop();
 
-        // 목표 도달 시, history 경로 그대로 넘겨주기
+        // 목표 도달 시, 경로 그대로 넘겨주기
         if (curr.x == end.x && curr.y == end.y)
         {
+            finalDir = curr.dir; // 어떤 방향으로 들어왔을 때, 도착했는지 기록
             if (savePath)
             {
-                m_currentPath = curr.history;
+                // 역추적 로직
+                int cx = end.x, cy = end.y, cd = finalDir;
+                while (cx != -1)
+                {
+                    m_currentPath.push_back(Vector2(cx, cy));
+
+                    if (cd == -1)
+                    {
+                        break;
+                    }
+
+                    ParentInfo p = parentMap[cy][cx][cd];
+                    cx = p.px;
+                    cy = p.py;
+                    cd = p.pdir;
+                }
+                std::reverse(m_currentPath.begin(), m_currentPath.end());
             }
             return true;
         }
@@ -237,15 +265,11 @@ bool GameLevel::CanConnect(Vector2 start, Vector2 end, bool savePath)
                     {
                         minTurns[ny][nx][dir] = totalTurns;
                         
-                        // 지금까지 걸어온 길(history)를 복사해서 다음 칸 위치를 추가
-                        std::vector<Vector2> nextHistory;
-                        if (savePath)
-                        {
-                            nextHistory = curr.history;
-                            nextHistory.push_back(Vector2(nx, ny));
-                        }
+                        // 부모 정보 저장
+                        parentMap[ny][nx][dir] = { curr.x,curr.y,curr.dir };
 
-                        pq.push({ nx,ny,dir,totalTurns,nextHistory });
+                        // PathNode에 더이상 벡터를 담지 않음
+                        pq.push({ nx,ny,dir,totalTurns });
                     }
                 }
             }
@@ -379,7 +403,23 @@ std::string GameLevel::GetPathChar(Vector2 prev, Vector2 curr, Vector2 next)
     {
         return std::string(4, h) + dl + std::string("     ");
     }
+    if (up && right)
+    {
+        return std::string("    ") + ur + std::string(5, h);
+    }
     return "          ";
+}
+
+void GameLevel::ClearCurrentPath()
+{
+    // 타이머 즉시 종료
+    pathDisplayTimer.Finish();
+
+    // 경로 데이터 완전 삭제
+    m_currentPath.clear();
+
+    firstSelected = InvalidPos;
+    secondSelected = InvalidPos;
 }
 
 void GameLevel::Draw()

@@ -25,7 +25,9 @@ public:
 	float GetProgress() const;
 
 	float GetRemainTime() const;
+	void SetElapsedTime(float deltatime);
 
+	void Finish();
 private:
 	// 경과 시간 확인용 변수
 	float elapsedTime = 0.0f;

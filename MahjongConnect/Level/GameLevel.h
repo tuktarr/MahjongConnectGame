@@ -13,8 +13,12 @@ struct PathNode
 {
 	int x, y, dir, turns;
 
-	// 역추적 대신, 지금까지 걸어온 경로
-	std::vector<Vector2> history;
+	// 명시적 생성자
+	PathNode(int x, int y, int dir, int turns)
+		:x(x), y(y), dir(dir), turns(turns)
+	{
+
+	}
 };
 
 // A* 알고리즘에서 먼저 탐색할 경로에 대한 기준
@@ -23,7 +27,7 @@ struct NodeComparer
 	Vector2 targetPos;
 	NodeComparer(Vector2 target) : targetPos(target) {}
 
-	bool operator() (const PathNode& a, const PathNode& b)
+	bool operator() (const PathNode& a, const PathNode& b) const 
 	{
 		// G-Score : 꺾임 횟수
 		int g_a = a.turns * 10;
@@ -88,6 +92,9 @@ public:
 	
 	// 좌표들 사이의 방향을 보고 적절한 선 문자를 반환하는 함수
 	std::string GetPathChar(Vector2 prev, Vector2 curr, Vector2 next);
+
+	// 경로 삭제 함수
+	void ClearCurrentPath();
 
 	// Getter
 	int GetRemainPairs() const { return m_remainPairs; }

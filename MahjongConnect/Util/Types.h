@@ -23,4 +23,14 @@ namespace Wanted
 		StageClear	// 모든 노드 제거 완료
 	};
 
+	struct ParentInfo
+	{
+		int px = -1;    // 부모의 X 좌표
+		int py = -1;    // 부모의 Y 좌표
+		int pdir = -1;  // 부모가 바라보던 방향 (역추적의 핵심 키)
+
+		ParentInfo() {}
+		ParentInfo(int _x, int _y, int _d) : px(_x), py(_y), pdir(_d) {}
+	};
+
 }
