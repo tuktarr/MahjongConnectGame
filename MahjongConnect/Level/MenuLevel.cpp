@@ -31,7 +31,7 @@ void MenuLevel::Draw()
     Vector2 rankBoardPos = Vector2(titlePos.x, exitGamePos.y + 2);
 
     // 버튼 위치
-    newGamePos = Vector2(titlePos.x, titlePos.y + 6);
+    newGamePos = Vector2(titlePos.x, titlePos.y + 5);
     exitGamePos = Vector2(titlePos.x, titlePos.y + 8);
 
     // 마우스 위치 가져오기
